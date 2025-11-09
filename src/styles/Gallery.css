@@ -1,0 +1,77 @@
+.gallery {
+  min-height: 100vh;
+  padding: 3rem 2rem;
+  background-color: var(--bg-color);
+}
+
+.gallery-nav {
+  margin-bottom: 4rem;
+  text-align: left;
+}
+
+.nav-link {
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+  text-decoration: none;
+  color: var(--text-color);
+  border-bottom: 1px solid var(--text-color);
+  padding-bottom: 2px;
+  transition: opacity 0.3s ease;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+.nav-link:hover {
+  opacity: 0.6;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 3rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.project-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.project-image {
+  width: 100%;
+  height: auto;
+  margin-bottom: 1rem;
+  object-fit: cover;
+}
+
+.project-info {
+  margin-top: 1rem;
+}
+
+.project-title {
+  font-size: 1.2rem;
+  font-weight: 400;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+  color: var(--text-color);
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+.project-description {
+  font-size: 0.9rem;
+  color: var(--accent-color);
+  line-height: 1.6;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+@media (max-width: 768px) {
+  .gallery {
+    padding: 2rem 1rem;
+  }
+  
+  .gallery-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
