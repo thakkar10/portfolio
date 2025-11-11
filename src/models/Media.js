@@ -39,9 +39,27 @@ const mediaSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  tags: {
+    type: [String],
+    default: [],
+    index: true,
+  },
+  caption: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  embedding: {
+    type: [Number],
+    default: undefined,
+    select: true,
+  },
 }, {
   timestamps: true,
 })
+
+// Text index for semantic-ish search across key fields
+mediaSchema.index({ title: 'text', category: 'text', tags: 'text' })
 
 export default mongoose.models.Media || mongoose.model('Media', mediaSchema)
 

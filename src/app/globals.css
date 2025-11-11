@@ -23,6 +23,11 @@ body {
   font-weight: 300;
   margin: 0;
   padding: 0;
+  /* iPhone safe area support */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 @layer utilities {
@@ -81,6 +86,36 @@ html {
 /* Letter spacing utility */
 .letter-spacing-wide {
   letter-spacing: 0.3em;
+}
+
+/* iPhone-specific optimizations */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific styles */
+  body {
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Prevent text size adjustment on orientation change */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
+  /* Better touch targets for iOS */
+  button, a, input, textarea, select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Fix iOS input zoom on focus */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 

@@ -8,9 +8,20 @@ export default function Home() {
   const [featuredImages, setFeaturedImages] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [query, setQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState(null)
   const heroRef = useRef(null)
   const featuredRef = useRef(null)
   
+  const quickPrompts = [
+    'travel',
+    'portraits',
+    'street',
+    'nature',
+    'design',
+  ]
+
   // Hardcoded cover photo - update this path to match your cover image filename
   const coverPhoto = '/cover.jpg'
 
@@ -44,16 +55,34 @@ export default function Home() {
         return res.json()
       })
       .then(data => {
-        console.log('Fetched featured images:', data)
         setFeaturedImages(Array.isArray(data) ? data : [])
         setLoading(false)
       })
       .catch(err => {
-        console.error('Error fetching featured images:', err)
         setError(err.message)
         setLoading(false)
       })
   }, [])
+
+  async function handleSearch(e) {
+    e?.preventDefault()
+    if (!query.trim()) {
+      setSearchResults(null)
+      return
+    }
+    try {
+      setSearching(true)
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`)
+      const data = await res.json()
+      setSearchResults(Array.isArray(data) ? data : [])
+    } catch (err) {
+      setSearchResults([])
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const itemsToShow = searchResults !== null ? searchResults : featuredImages
 
   return (
     <main className="bg-black" style={{ margin: 0, padding: 0 }}>
@@ -97,20 +126,26 @@ export default function Home() {
         )}
 
         {/* Content Overlay */}
-        <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
+        <div 
+          className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 sm:px-6 text-center"
+          style={{
+            paddingTop: 'max(2rem, env(safe-area-inset-top))',
+            paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
+          }}
+        >
           {/* Signature Image with Scroll-triggered Fade */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="mb-12 md:mb-16"
+            className="mb-8 sm:mb-12 md:mb-16"
             style={{ 
               opacity: signatureOpacity,
               scale: signatureScale,
               y: signatureY
             }}
           >
-            <div className="relative w-auto h-36 md:h-56 lg:h-64 signature-container">
+            <div className="relative w-auto h-28 sm:h-36 md:h-56 lg:h-64 signature-container">
               <Image
                 src="/signature.png"
                 alt="Signature"
@@ -128,8 +163,9 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute bottom-12 left-0 right-0 z-10 flex justify-center items-center"
+          className="absolute left-0 right-0 z-10 flex justify-center items-center"
           style={{ 
+            bottom: 'max(3rem, calc(3rem + env(safe-area-inset-bottom)))',
             opacity: scrollPromptOpacity,
             y: scrollPromptY
           }}
@@ -140,12 +176,12 @@ export default function Home() {
             }
           }}
         >
-          <div className="flex flex-col items-center justify-center gap-3 cursor-pointer group">
+          <div className="flex flex-col items-center justify-center gap-2 sm:gap-3 cursor-pointer group min-h-[60px] min-w-[120px]">
             {/* Animated Text */}
             <motion.div
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              className="text-sm md:text-base text-white/70 tracking-[0.2em] uppercase font-light group-hover:text-white/90 transition-colors duration-300 text-center"
+              className="text-xs sm:text-sm md:text-base text-white/70 tracking-[0.15em] sm:tracking-[0.2em] uppercase font-light group-hover:text-white/90 transition-colors duration-300 text-center"
             >
               Scroll to explore
             </motion.div>
@@ -157,15 +193,15 @@ export default function Home() {
               className="flex items-center justify-center"
             >
               <svg
-                width="24"
-                height="24"
+                width="20"
+                height="20"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-white/60 group-hover:text-white/80 transition-colors duration-300"
+                className="text-white/60 group-hover:text-white/80 transition-colors duration-300 sm:w-6 sm:h-6"
               >
                 <path d="M7 13l5 5 5-5M7 6l5 5 5-5" />
               </svg>
@@ -178,8 +214,12 @@ export default function Home() {
       <section 
           ref={featuredRef}
           id="featured-work" 
-          className="relative pt-24 md:pt-32 pb-24 md:pb-32 px-6 bg-black" 
-          style={{ marginTop: 0, marginBottom: 0 }}
+          className="relative pt-20 sm:pt-24 md:pt-32 pb-20 sm:pb-24 md:pb-32 px-4 sm:px-6 bg-black" 
+          style={{ 
+            marginTop: 0, 
+            marginBottom: 0,
+            paddingBottom: 'max(5rem, calc(5rem + env(safe-area-inset-bottom)))',
+          }}
         >
           <div className="max-w-7xl mx-auto">
             <motion.h2
@@ -204,14 +244,14 @@ export default function Home() {
               </div>
             )}
             
-            {!loading && !error && featuredImages.length === 0 && (
+            {featuredImages && featuredImages.length === 0 && (
               <div className="text-center text-white/60 py-12">
-                <p className="mb-4">No featured images yet.</p>
+                <p className="mb-2">No results.</p>
                 <p className="text-sm">Upload images from the admin dashboard and mark them as featured.</p>
               </div>
             )}
             
-            {!loading && featuredImages.length > 0 && (
+            {featuredImages && featuredImages.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                 {featuredImages.map((item, index) => (
                 <motion.div
@@ -233,7 +273,7 @@ export default function Home() {
                     <>
                       <Image
                         src={item.cloudinaryUrl}
-                        alt={item.title || 'Featured work'}
+                        alt={item.title || 'Work'}
                         fill
                         className="object-cover transition-all duration-700 ease-out group-hover:scale-110"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

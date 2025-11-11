@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import Media from '@/models/Media'
 
+// Mark as dynamic to prevent build-time evaluation
+export const dynamic = 'force-dynamic'
+
 export async function GET(request) {
   try {
     console.log('🔍 Fetching media...')

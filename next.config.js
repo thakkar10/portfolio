@@ -27,6 +27,13 @@ const nextConfig = {
     }
     return []
   },
+  // Ensure API routes are treated as server-side only
+  // This prevents Next.js from trying to evaluate them during build
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
 }
 
 export default nextConfig

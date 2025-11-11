@@ -4,6 +4,9 @@ import Media from '@/models/Media'
 import { verifyToken } from '@/middleware/auth'
 import { uploadToCloudinary } from '@/lib/cloudinary'
 
+// Mark as dynamic to prevent build-time evaluation
+export const dynamic = 'force-dynamic'
+
 export async function POST(request) {
   try {
     const auth = verifyToken(request)

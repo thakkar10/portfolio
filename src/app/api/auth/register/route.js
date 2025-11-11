@@ -3,6 +3,9 @@ import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 import jwt from 'jsonwebtoken'
 
+// Mark as dynamic to prevent build-time evaluation
+export const dynamic = 'force-dynamic'
+
 export async function POST(request) {
   try {
     const { username, password } = await request.json()
