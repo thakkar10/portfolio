@@ -4,9 +4,6 @@ import { Resend } from 'resend'
 // Mark as dynamic to prevent build-time evaluation
 export const dynamic = 'force-dynamic'
 
-// Initialize Resend with API key from environment variable
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function POST(request) {
   try {
     const { name, email, message } = await request.json()
@@ -37,6 +34,9 @@ export async function POST(request) {
         { status: 500 }
       )
     }
+
+    // Initialize Resend only when needed (lazy loading to prevent build-time errors)
+    const resend = new Resend(process.env.RESEND_API_KEY)
 
     // Send email using Resend
     const { data, error } = await resend.emails.send({
