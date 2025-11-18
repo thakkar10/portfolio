@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import MasonryGrid from '@/components/MasonryGrid'
 import { useSearchParams } from 'next/navigation'
 
-export default function DesignPage() {
+function DesignContent() {
   const [designs, setDesigns] = useState([])
   const [loading, setLoading] = useState(true)
   const searchParams = useSearchParams()
@@ -31,6 +31,26 @@ export default function DesignPage() {
   }, [q])
 
   return (
+    <>
+      {q.trim() && (
+        <div className="text-center text-white/70 mb-6">
+          Results for "{q}"
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center py-20 text-white/60">Loading...</div>
+      ) : designs.length > 0 ? (
+        <MasonryGrid items={designs} />
+      ) : (
+        <div className="text-center py-20 text-white/60">{q.trim() ? 'No results for your search.' : 'No design work found.'}</div>
+      )}
+    </>
+  )
+}
+
+export default function DesignPage() {
+  return (
     <main 
       className="min-h-screen bg-black"
       style={{
@@ -47,19 +67,9 @@ export default function DesignPage() {
           Design
         </motion.h1>
 
-        {q.trim() && (
-          <div className="text-center text-white/70 mb-6">
-            Results for “{q}”
-          </div>
-        )}
-
-        {loading ? (
-          <div className="text-center py-20 text-white/60">Loading...</div>
-        ) : designs.length > 0 ? (
-          <MasonryGrid items={designs} />
-        ) : (
-          <div className="text-center py-20 text-white/60">{q.trim() ? 'No results for your search.' : 'No design work found.'}</div>
-        )}
+        <Suspense fallback={<div className="text-center py-20 text-white/60">Loading...</div>}>
+          <DesignContent />
+        </Suspense>
       </div>
     </main>
   )

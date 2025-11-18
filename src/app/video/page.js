@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import { useSearchParams } from 'next/navigation'
 
-export default function VideoPage() {
+function VideoContent() {
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
   const searchParams = useSearchParams()
@@ -30,6 +30,66 @@ export default function VideoPage() {
   }, [q])
 
   return (
+    <>
+      {q.trim() && (
+        <div className="text-center text-white/70 mb-6">
+          Results for "{q}"
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center py-20 text-white/60">Loading...</div>
+      ) : videos.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {videos.map((video, index) => (
+            <motion.div
+              key={video._id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.1, duration: 0.5 }}
+              className="aspect-video"
+            >
+              {video.youtubeUrl ? (
+                <iframe
+                  src={video.youtubeUrl.replace('watch?v=', 'embed/')}
+                  title={video.title}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : video.vimeoUrl ? (
+                <iframe
+                  src={video.vimeoUrl.replace('vimeo.com/', 'player.vimeo.com/video/')}
+                  title={video.title}
+                  className="w-full h-full"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : video.cloudinaryUrl ? (
+                <video
+                  src={video.cloudinaryUrl}
+                  controls
+                  className="w-full h-full object-cover"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : null}
+              {video.title && (
+                <h3 className="mt-4 text-xl font-light text-white">{video.title}</h3>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-20 text-white/60">{q.trim() ? 'No results for your search.' : 'No videos found.'}</div>
+      )}
+    </>
+  )
+}
+
+export default function VideoPage() {
+  return (
     <main 
       className="min-h-screen bg-black"
       style={{
@@ -46,59 +106,9 @@ export default function VideoPage() {
           Video
         </motion.h1>
 
-        {q.trim() && (
-          <div className="text-center text-white/70 mb-6">
-            Results for “{q}”
-          </div>
-        )}
-
-        {loading ? (
-          <div className="text-center py-20 text-white/60">Loading...</div>
-        ) : videos.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {videos.map((video, index) => (
-              <motion.div
-                key={video._id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1, duration: 0.5 }}
-                className="aspect-video"
-              >
-                {video.youtubeUrl ? (
-                  <iframe
-                    src={video.youtubeUrl.replace('watch?v=', 'embed/')}
-                    title={video.title}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                ) : video.vimeoUrl ? (
-                  <iframe
-                    src={video.vimeoUrl.replace('vimeo.com/', 'player.vimeo.com/video/')}
-                    title={video.title}
-                    className="w-full h-full"
-                    allow="autoplay; fullscreen; picture-in-picture"
-                    allowFullScreen
-                  />
-                ) : video.cloudinaryUrl ? (
-                  <video
-                    src={video.cloudinaryUrl}
-                    controls
-                    className="w-full h-full object-cover"
-                  >
-                    Your browser does not support the video tag.
-                  </video>
-                ) : null}
-                {video.title && (
-                  <h3 className="mt-4 text-xl font-light text-white">{video.title}</h3>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-20 text-white/60">{q.trim() ? 'No results for your search.' : 'No videos found.'}</div>
-        )}
+        <Suspense fallback={<div className="text-center py-20 text-white/60">Loading...</div>}>
+          <VideoContent />
+        </Suspense>
       </div>
     </main>
   )
