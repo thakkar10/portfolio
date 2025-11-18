@@ -1,45 +1,70 @@
-let _client = null
+let _genAI = null
 
-async function getClient() {
-  if (!_client) {
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) throw new Error('OPENAI_API_KEY not configured')
-    const pkg = 'openai'
+async function getGenAI() {
+  if (!_genAI) {
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey) throw new Error('GEMINI_API_KEY not configured')
+    const pkg = '@google/generative-ai'
     const mod = await import(pkg)
-    const OpenAI = mod.default || mod
-    _client = new OpenAI({ apiKey })
+    const { GoogleGenerativeAI } = mod
+    _genAI = new GoogleGenerativeAI(apiKey)
   }
-  return _client
+  return _genAI
 }
 
 export async function captionImage(url) {
-  const client = await getClient()
-  const prompt = `Provide a concise, descriptive caption for this image suitable for search.`
-  const res = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: 'You create short, descriptive image captions.' },
-      { role: 'user', content: [
-        { type: 'text', text: prompt },
-        { type: 'input_image', image_url: url },
-      ] },
-    ],
-    temperature: 0.2,
-    max_tokens: 80,
-  })
-  const caption = res.choices?.[0]?.message?.content?.trim() || ''
+  const genAI = await getGenAI()
+  // Use gemini-2.5-flash-preview-05-20 for image understanding (fast and free tier)
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' })
+  const prompt = `Provide a concise, descriptive caption for this image suitable for search. Focus on visual elements, style, mood, and subject matter.`
+  
+  // Fetch image and convert to base64
+  const imageResponse = await fetch(url)
+  const imageBuffer = await imageResponse.arrayBuffer()
+  const imageBase64 = Buffer.from(imageBuffer).toString('base64')
+  const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg'
+  
+  const res = await model.generateContent([
+    {
+      text: prompt,
+    },
+    {
+      inlineData: {
+        data: imageBase64,
+        mimeType: mimeType,
+      },
+    },
+  ])
+  
+  const caption = res.response.text()?.trim() || ''
   return caption
 }
 
 export async function embedText(text) {
-  const client = await getClient()
-  const input = (text || '').slice(0, 5000)
-  const res = await client.embeddings.create({
-    model: 'text-embedding-3-small',
-    input,
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) throw new Error('GEMINI_API_KEY not configured')
+  
+  const input = (text || '').slice(0, 2000) // text-embedding-004 supports longer text
+  
+  // Use REST API with text-embedding-004 model
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      model: 'models/text-embedding-004',
+      content: { 
+        parts: [{ text: input }] 
+      } 
+    }),
   })
-  const vector = res.data?.[0]?.embedding || []
-  return vector
+  
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Gemini embedding API error: ${response.status} ${error}`)
+  }
+  
+  const data = await response.json()
+  return data.embedding?.values || []
 }
 
 export function cosineSimilarity(a, b) {

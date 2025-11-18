@@ -1,8 +1,24 @@
 #!/usr/bin/env node
-import 'dotenv/config'
-import connectDB from '@/lib/mongodb'
-import Media from '@/models/Media'
-import { captionImage, embedText } from '@/lib/embeddings'
+import { config } from 'dotenv'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+import { existsSync } from 'fs'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+// Load .env.local if it exists, otherwise .env
+const envPath = join(__dirname, '../../.env.local')
+if (existsSync(envPath)) {
+  config({ path: envPath })
+} else {
+  config() // fallback to .env
+}
+
+// Use relative paths since @ alias doesn't work in Node scripts
+import connectDB from '../lib/mongodb.js'
+import Media from '../models/Media.js'
+import { captionImage, embedText } from '../lib/embeddings.js'
 
 async function run() {
   await connectDB()

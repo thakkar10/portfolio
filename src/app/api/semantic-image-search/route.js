@@ -7,8 +7,8 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
   try {
-    // If OpenAI is not configured, disable semantic search gracefully
-    if (!process.env.OPENAI_API_KEY) {
+    // If Gemini is not configured, disable semantic search gracefully
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json([])
     }
 
@@ -29,7 +29,7 @@ export async function GET(request) {
 
     const ranked = docs
       .map(d => ({ doc: d, score: cosineSimilarity(qVec, d.embedding || []) }))
-      .filter(x => x.score > 0)
+      .filter(x => x.score > 0.4) // Stricter threshold - only highly relevant results (0.4 threshold)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
       .map(x => ({ ...x.doc, _score: x.score }))

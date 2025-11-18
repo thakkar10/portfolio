@@ -22,7 +22,7 @@ This is a modern, AI-powered photography portfolio website that showcases photog
 - **Responsive**: Fully responsive across desktop, tablet, and mobile
 - **Photo Gallery**: Masonry grid layout with category filters
 - **Video Support**: Embedded YouTube/Vimeo videos or local video uploads
-- **Admin Dashboard**: Secure login and upload interface
+
 - **Cloudinary Integration**: Automatic image compression and optimization
 - **Framer Motion**: Smooth fade-in animations on scroll
 
