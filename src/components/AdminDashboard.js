@@ -123,10 +123,14 @@ export default function AdminDashboard() {
         fetchMedia()
       } else {
         const error = await res.json()
-        alert(error.error || 'Upload failed')
+        console.error('Upload error response:', error)
+        const errorMessage = error.error || `Upload failed (Status: ${res.status})`
+        alert(errorMessage)
       }
     } catch (err) {
-      alert('Error uploading. Please try again.')
+      console.error('Upload exception:', err)
+      const errorMessage = err.message || 'Error uploading. Please try again.'
+      alert(`Error: ${errorMessage}`)
     } finally {
       setUploading(false)
     }
