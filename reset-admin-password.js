@@ -28,12 +28,16 @@ if (newPassword.length < 6) {
 
 async function resetPassword() {
   try {
-    await connectDB()
-    
+    const conn = await connectDB()
+    const dbName = conn?.connection?.db?.databaseName || 'unknown'
+    console.log('📂 Connected to database:', dbName)
+
     const user = await User.findOne({ username: 'admin' })
-    
+
     if (!user) {
-      console.log('\n❌ Admin user not found')
+      const count = await User.countDocuments({})
+      console.log('\n❌ Admin user not found in this database.')
+      console.log(`   (Found ${count} other user(s). Make sure MONGODB_URI ends with /portfolio)`)
       process.exit(1)
     }
     
