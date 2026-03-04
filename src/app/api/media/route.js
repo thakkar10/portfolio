@@ -49,9 +49,11 @@ export async function GET(request) {
     console.error('❌ Error fetching media:', error)
     console.error('❌ Error message:', error.message)
     console.error('❌ Error stack:', error.stack)
-    // Return empty array with status 200 to prevent frontend errors
-    // The error is logged on the server for debugging
-    return NextResponse.json([], { status: 200 })
+    // Return 500 so frontend can show error (e.g. missing MONGODB_URI on Vercel)
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch media' },
+      { status: 500 }
+    )
   }
 }
 

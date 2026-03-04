@@ -79,12 +79,12 @@ export default function AdminDashboard() {
       if (selectedFile) {
         let fileToUpload = selectedFile
         
-        // Compress images if they're too large (over 9MB to be safe)
-        if (formData.type === 'image' && selectedFile.size > 9 * 1024 * 1024) {
-          console.log('Compressing large image...')
+        // Compress images so they're under Vercel's ~4.5 MB request limit
+        if (formData.type === 'image' && selectedFile.size > 4 * 1024 * 1024) {
+          console.log('Compressing image for upload...')
           const options = {
-            maxSizeMB: 9, // Maximum file size in MB
-            maxWidthOrHeight: 1920, // Maximum width or height
+            maxSizeMB: 3.5, // Keep under 4.5 MB Vercel limit
+            maxWidthOrHeight: 1920,
             useWebWorker: true,
             fileType: selectedFile.type,
           }
@@ -122,15 +122,34 @@ export default function AdminDashboard() {
         setSelectedFile(null)
         fetchMedia()
       } else {
-        const error = await res.json()
-        console.error('Upload error response:', error)
-        const errorMessage = error.error || `Upload failed (Status: ${res.status})`
+        let errorMessage = `Upload failed (Status: ${res.status})`
+        try {
+          const contentType = res.headers.get('content-type') || ''
+          const text = await res.text()
+          if (contentType.includes('application/json')) {
+            const error = JSON.parse(text)
+            errorMessage = error.error || errorMessage
+          } else if (text && text.length < 200) {
+            errorMessage = text
+          } else if (res.status === 413 || text.includes('Request Entity Too Large') || text.includes('too large')) {
+            errorMessage = 'File is too large. Please use an image under 4 MB.'
+          }
+        } catch (_) {
+          if (res.status === 413) {
+            errorMessage = 'File is too large. Please use an image under 4 MB.'
+          }
+        }
+        console.error('Upload error response:', errorMessage)
         alert(errorMessage)
       }
     } catch (err) {
       console.error('Upload exception:', err)
-      const errorMessage = err.message || 'Error uploading. Please try again.'
-      alert(`Error: ${errorMessage}`)
+      const msg = err.message || 'Error uploading. Please try again.'
+      if (msg.includes('JSON') && msg.includes('Request En')) {
+        alert('Upload failed: file may be too large (max ~4 MB) or the server returned an error. Try a smaller image.')
+      } else {
+        alert(`Error: ${msg}`)
+      }
     } finally {
       setUploading(false)
     }

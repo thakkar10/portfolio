@@ -44,19 +44,29 @@ export default function Home() {
   const scrollPromptY = useTransform(smoothHeroProgress, [0, 0.4], ['0%', '30%'])
 
   useEffect(() => {
-    // Fetch featured images for the grid (cover photo is hardcoded, so all featured images go to grid)
+    // Fetch featured images first; if none, show latest media so something appears
     setLoading(true)
     setError(null)
     fetch('/api/media?featured=true&limit=10')
-      .then(res => {
+      .then(res => res.json().then(data => ({ res, data })))
+      .then(({ res, data }) => {
         if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`)
+          throw new Error(typeof data?.error === 'string' ? data.error : `Failed to load gallery (${res.status})`)
         }
-        return res.json()
-      })
-      .then(data => {
-        setFeaturedImages(Array.isArray(data) ? data : [])
-        setLoading(false)
+        const list = Array.isArray(data) ? data : []
+        if (list.length > 0) {
+          setFeaturedImages(list)
+          setLoading(false)
+          return
+        }
+        // No featured items — fetch latest media so homepage still shows photos
+        return fetch('/api/media?limit=10')
+          .then(r => r.json().then(d => ({ r, d })))
+          .then(({ r, d }) => {
+            if (!r.ok) throw new Error(typeof d?.error === 'string' ? d.error : `Failed to load gallery (${r.status})`)
+            setFeaturedImages(Array.isArray(d) ? d : [])
+          })
+          .finally(() => setLoading(false))
       })
       .catch(err => {
         setError(err.message)
