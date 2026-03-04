@@ -11,11 +11,13 @@ function PhotographyContent() {
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [images, setImages] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const searchParams = useSearchParams()
   const q = searchParams.get('q') || ''
 
   useEffect(() => {
     setLoading(true)
+    setError(null)
     if (q.trim()) {
       fetch(`/api/semantic-image-search?type=image&q=${encodeURIComponent(q.trim())}`)
         .then(res => res.json())
@@ -32,13 +34,20 @@ function PhotographyContent() {
     }
     const categoryParam = selectedCategory === 'All' ? '' : `&category=${selectedCategory}`
     fetch(`/api/media?type=image${categoryParam}`)
-      .then(res => res.json())
-      .then(data => {
-        setImages(data)
+      .then(res => res.json().then(data => ({ res, data })))
+      .then(({ res, data }) => {
+        if (!res.ok) {
+          setError(typeof data?.error === 'string' ? data.error : 'Failed to load images')
+          setImages([])
+        } else {
+          setImages(Array.isArray(data) ? data : [])
+        }
         setLoading(false)
       })
       .catch(err => {
         console.error('Error fetching images:', err)
+        setError('Could not load gallery.')
+        setImages([])
         setLoading(false)
       })
   }, [selectedCategory, q])
@@ -76,17 +85,22 @@ function PhotographyContent() {
       )}
 
       {/* Gallery */}
+      {error && (
+        <div className="text-center py-20 text-amber-400">
+          {error} (Check that the database is connected.)
+        </div>
+      )}
       {loading ? (
         <div className="text-center py-20">
           <div className="inline-block animate-pulse text-white/60">Loading images...</div>
         </div>
-      ) : images.length > 0 ? (
+      ) : !error && images.length > 0 ? (
         <MasonryGrid items={images} />
-      ) : (
+      ) : !error ? (
         <div className="text-center py-20 text-white/60">
           {q.trim() ? 'No results for your search.' : 'No images found in this category.'}
         </div>
-      )}
+      ) : null}
     </>
   )
 }

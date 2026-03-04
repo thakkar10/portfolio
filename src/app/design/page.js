@@ -8,23 +8,31 @@ import { useSearchParams } from 'next/navigation'
 function DesignContent() {
   const [designs, setDesigns] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const searchParams = useSearchParams()
   const q = searchParams.get('q') || ''
 
   useEffect(() => {
     setLoading(true)
+    setError(null)
     const endpoint = q.trim()
       ? `/api/semantic-image-search?q=${encodeURIComponent(q.trim())}`
       : '/api/media?category=Design'
 
     fetch(endpoint)
-      .then(res => res.json())
-      .then(data => {
-        setDesigns(Array.isArray(data) ? data : [])
+      .then(res => res.json().then(data => ({ res, data })))
+      .then(({ res, data }) => {
+        if (!res.ok) {
+          setError(typeof data?.error === 'string' ? data.error : 'Failed to load designs')
+          setDesigns([])
+        } else {
+          setDesigns(Array.isArray(data) ? data : [])
+        }
         setLoading(false)
       })
       .catch(err => {
         console.error('Error fetching designs:', err)
+        setError('Could not load gallery.')
         setDesigns([])
         setLoading(false)
       })
@@ -38,13 +46,18 @@ function DesignContent() {
         </div>
       )}
 
+      {error && (
+        <div className="text-center py-20 text-amber-400">
+          {error} (Check that the database is connected.)
+        </div>
+      )}
       {loading ? (
         <div className="text-center py-20 text-white/60">Loading...</div>
-      ) : designs.length > 0 ? (
+      ) : !error && designs.length > 0 ? (
         <MasonryGrid items={designs} />
-      ) : (
+      ) : !error ? (
         <div className="text-center py-20 text-white/60">{q.trim() ? 'No results for your search.' : 'No design work found.'}</div>
-      )}
+      ) : null}
     </>
   )
 }

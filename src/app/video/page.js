@@ -7,23 +7,31 @@ import { useSearchParams } from 'next/navigation'
 function VideoContent() {
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const searchParams = useSearchParams()
   const q = searchParams.get('q') || ''
 
   useEffect(() => {
     setLoading(true)
+    setError(null)
     const endpoint = q.trim()
       ? `/api/semantic-image-search?type=video&q=${encodeURIComponent(q.trim())}`
       : '/api/media?type=video'
 
     fetch(endpoint)
-      .then(res => res.json())
-      .then(data => {
-        setVideos(Array.isArray(data) ? data : [])
+      .then(res => res.json().then(data => ({ res, data })))
+      .then(({ res, data }) => {
+        if (!res.ok) {
+          setError(typeof data?.error === 'string' ? data.error : 'Failed to load videos')
+          setVideos([])
+        } else {
+          setVideos(Array.isArray(data) ? data : [])
+        }
         setLoading(false)
       })
       .catch(err => {
         console.error('Error fetching videos:', err)
+        setError('Could not load gallery.')
         setVideos([])
         setLoading(false)
       })
@@ -37,9 +45,14 @@ function VideoContent() {
         </div>
       )}
 
+      {error && (
+        <div className="text-center py-20 text-amber-400">
+          {error} (Check that the database is connected.)
+        </div>
+      )}
       {loading ? (
         <div className="text-center py-20 text-white/60">Loading...</div>
-      ) : videos.length > 0 ? (
+      ) : !error && videos.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {videos.map((video, index) => (
             <motion.div
@@ -81,9 +94,9 @@ function VideoContent() {
             </motion.div>
           ))}
         </div>
-      ) : (
+      ) : !error ? (
         <div className="text-center py-20 text-white/60">{q.trim() ? 'No results for your search.' : 'No videos found.'}</div>
-      )}
+      ) : null}
     </>
   )
 }
