@@ -13,10 +13,15 @@ export default function MasonryGrid({ items }) {
         {items.map((item, index) => (
           <motion.div
             key={item._id}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.05, duration: 0.5 }}
+            initial={{ opacity: 0, y: 40, scale: 0.95, rotateX: 6 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
+            viewport={{ once: false, amount: 0.3 }}
+            transition={{
+              delay: Math.min(index * 0.06, 0.4),
+              duration: 0.8,
+              ease: [0.16, 1, 0.3, 1],
+            }}
+            whileHover={{ scale: 1.03, y: -4, transition: { duration: 0.25 } }}
             className="break-inside-avoid mb-2 sm:mb-4 cursor-pointer group"
             onClick={() => item.cloudinaryUrl && setSelectedImage(item)}
           >
