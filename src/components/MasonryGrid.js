@@ -9,7 +9,7 @@ export default function MasonryGrid({ items }) {
 
   return (
     <>
-      <div className="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
+      <div className="columns-2 md:columns-2 lg:columns-3 gap-2 sm:gap-4 space-y-2 sm:space-y-4">
         {items.map((item, index) => (
           <motion.div
             key={item._id}
@@ -17,7 +17,7 @@ export default function MasonryGrid({ items }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: index * 0.05, duration: 0.5 }}
-            className="break-inside-avoid mb-4 cursor-pointer group"
+            className="break-inside-avoid mb-2 sm:mb-4 cursor-pointer group"
             onClick={() => item.cloudinaryUrl && setSelectedImage(item)}
           >
             {item.cloudinaryUrl && (

@@ -262,7 +262,7 @@ export default function Home() {
             )}
             
             {featuredImages && featuredImages.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
                 {featuredImages.map((item, index) => (
                 <motion.div
                   key={item._id}
