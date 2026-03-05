@@ -35,7 +35,7 @@ export async function GET(request) {
     }
 
     const timestamp = Math.floor(Date.now() / 1000)
-    const paramsToSign = { timestamp, folder, resource_type: resourceType }
+    const paramsToSign = { timestamp, folder }
 
     cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret })
     const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret)

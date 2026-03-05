@@ -88,7 +88,7 @@ export default function AdminDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (!paramsRes.ok) {
-          const err = await paramsRes.json()
+          const err = await paramsRes.json().catch(() => ({}))
           throw new Error(err.error || 'Failed to get upload params')
         }
         const params = await paramsRes.json()
@@ -100,13 +100,26 @@ export default function AdminDashboard() {
         uploadForm.append('folder', params.folder)
         uploadForm.append('resource_type', params.resource_type)
 
-        const uploadRes = await fetch(
-          `https://api.cloudinary.com/v1_1/${params.cloud_name}/video/upload`,
-          { method: 'POST', body: uploadForm }
-        )
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10 * 60 * 1000)
+        let uploadRes
+        try {
+          uploadRes = await fetch(
+            `https://api.cloudinary.com/v1_1/${params.cloud_name}/video/upload`,
+            { method: 'POST', body: uploadForm, signal: controller.signal }
+          )
+        } catch (err) {
+          clearTimeout(timeoutId)
+          if (err.name === 'AbortError') {
+            throw new Error('Video upload timed out. Try a smaller file or better connection.')
+          }
+          throw new Error(err.message || 'Network error during video upload.')
+        }
+        clearTimeout(timeoutId)
+
         if (!uploadRes.ok) {
           const text = await uploadRes.text()
-          let errMsg = 'Video upload to Cloudinary failed'
+          let errMsg = `Cloudinary upload failed (${uploadRes.status})`
           try {
             const j = JSON.parse(text)
             if (j.error?.message) errMsg = j.error.message
@@ -394,12 +407,15 @@ export default function AdminDashboard() {
               />
               <label htmlFor="featured" className="text-black">Featured</label>
             </div>
+            {formData.type === 'video' && (
+              <p className="text-sm text-gray-500">Large videos upload directly to Cloudinary and may take 1–2 minutes.</p>
+            )}
             <button
               type="submit"
               disabled={uploading}
               className="px-8 py-3 bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
-              {uploading ? 'Uploading...' : 'Upload'}
+              {uploading ? (formData.type === 'video' ? 'Uploading video…' : 'Uploading...') : 'Upload'}
             </button>
           </form>
         </div>
