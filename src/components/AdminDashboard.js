@@ -77,8 +77,13 @@ export default function AdminDashboard() {
       let cloudinaryUrl = ''
       let cloudinaryPublicId = ''
 
-      // Videos: upload directly to Cloudinary from the browser (no Vercel size limit)
-      if (selectedFile && formData.type === 'video') {
+      const isVideoFile = selectedFile && (
+        (selectedFile.type && selectedFile.type.startsWith('video/')) ||
+        /\.(mp4|webm|mov|avi|mkv)$/i.test(selectedFile.name || '')
+      )
+
+      // Videos: always upload directly to Cloudinary (never send to our API → avoids payload limit)
+      if (isVideoFile) {
         const paramsRes = await fetch('/api/cloudinary-upload-params?resource_type=video', {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -114,7 +119,7 @@ export default function AdminDashboard() {
       }
 
       const data = new FormData()
-      if (selectedFile && formData.type === 'image') {
+      if (selectedFile && formData.type === 'image' && !isVideoFile) {
         let fileToUpload = selectedFile
         if (selectedFile.size > 4 * 1024 * 1024) {
           console.log('Compressing image for upload...')
@@ -130,7 +135,7 @@ export default function AdminDashboard() {
       }
       data.append('title', formData.title)
       data.append('category', formData.category)
-      data.append('type', formData.type)
+      data.append('type', isVideoFile ? 'video' : formData.type)
       if (formData.youtubeUrl) data.append('youtubeUrl', formData.youtubeUrl)
       if (formData.vimeoUrl) data.append('vimeoUrl', formData.vimeoUrl)
       data.append('featured', formData.featured)
