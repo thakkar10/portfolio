@@ -118,35 +118,57 @@ export default function AdminDashboard() {
         cloudinaryPublicId = uploadResult.public_id
       }
 
-      const data = new FormData()
-      if (selectedFile && formData.type === 'image' && !isVideoFile) {
-        let fileToUpload = selectedFile
-        if (selectedFile.size > 4 * 1024 * 1024) {
-          console.log('Compressing image for upload...')
-          const options = {
-            maxSizeMB: 3.5,
-            maxWidthOrHeight: 1920,
-            useWebWorker: true,
-            fileType: selectedFile.type,
+      let res
+      if (isVideoFile && cloudinaryUrl && cloudinaryPublicId) {
+        // Video: send JSON only (no FormData, no file) → avoids Vercel payload limit
+        res = await fetch('/api/media/create', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: formData.title,
+            category: formData.category,
+            type: 'video',
+            cloudinaryUrl,
+            cloudinaryPublicId,
+            youtubeUrl: formData.youtubeUrl || '',
+            vimeoUrl: formData.vimeoUrl || '',
+            featured: formData.featured,
+          }),
+        })
+      } else {
+        const data = new FormData()
+        if (selectedFile && formData.type === 'image' && !isVideoFile) {
+          let fileToUpload = selectedFile
+          if (selectedFile.size > 4 * 1024 * 1024) {
+            console.log('Compressing image for upload...')
+            const options = {
+              maxSizeMB: 3.5,
+              maxWidthOrHeight: 1920,
+              useWebWorker: true,
+              fileType: selectedFile.type,
+            }
+            fileToUpload = await imageCompression(selectedFile, options)
           }
-          fileToUpload = await imageCompression(selectedFile, options)
+          data.append('file', fileToUpload)
         }
-        data.append('file', fileToUpload)
-      }
-      data.append('title', formData.title)
-      data.append('category', formData.category)
-      data.append('type', isVideoFile ? 'video' : formData.type)
-      if (formData.youtubeUrl) data.append('youtubeUrl', formData.youtubeUrl)
-      if (formData.vimeoUrl) data.append('vimeoUrl', formData.vimeoUrl)
-      data.append('featured', formData.featured)
-      if (cloudinaryUrl) data.append('cloudinaryUrl', cloudinaryUrl)
-      if (cloudinaryPublicId) data.append('cloudinaryPublicId', cloudinaryPublicId)
+        data.append('title', formData.title)
+        data.append('category', formData.category)
+        data.append('type', formData.type)
+        if (formData.youtubeUrl) data.append('youtubeUrl', formData.youtubeUrl)
+        if (formData.vimeoUrl) data.append('vimeoUrl', formData.vimeoUrl)
+        data.append('featured', formData.featured)
+        if (cloudinaryUrl) data.append('cloudinaryUrl', cloudinaryUrl)
+        if (cloudinaryPublicId) data.append('cloudinaryPublicId', cloudinaryPublicId)
 
-      const res = await fetch('/api/media/upload', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: data,
-      })
+        res = await fetch('/api/media/upload', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: data,
+        })
+      }
 
       if (res.ok) {
         alert('Upload successful!')
