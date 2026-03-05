@@ -32,8 +32,10 @@ export async function POST(request) {
     const youtubeUrl = formData.get('youtubeUrl') || ''
     const vimeoUrl = formData.get('vimeoUrl') || ''
     const featured = formData.get('featured') === 'true'
+    const cloudinaryUrlFromClient = formData.get('cloudinaryUrl')
+    const cloudinaryPublicIdFromClient = formData.get('cloudinaryPublicId')
 
-    console.log('📋 Form data:', { title, category, type, hasFile: !!file, fileSize: file?.size })
+    console.log('📋 Form data:', { title, category, type, hasFile: !!file, fileSize: file?.size, hasDirectUrl: !!cloudinaryUrlFromClient })
 
     if (!title) {
       return NextResponse.json(
@@ -54,8 +56,14 @@ export async function POST(request) {
     let cloudinaryUrl = ''
     let cloudinaryPublicId = ''
 
-    // Upload to Cloudinary if file provided
-    if (file && file.size > 0) {
+    // Use URL/publicId from client when video (or large file) was uploaded directly to Cloudinary
+    if (cloudinaryUrlFromClient && typeof cloudinaryUrlFromClient === 'string' && cloudinaryPublicIdFromClient && typeof cloudinaryPublicIdFromClient === 'string') {
+      cloudinaryUrl = cloudinaryUrlFromClient.trim()
+      cloudinaryPublicId = cloudinaryPublicIdFromClient.trim()
+      console.log('✅ Using client-uploaded Cloudinary asset:', cloudinaryUrl.substring(0, 60) + '...')
+    }
+    // Otherwise upload file to Cloudinary if provided
+    else if (file && file.size > 0) {
       try {
         console.log('☁️ Uploading to Cloudinary...', { size: file.size, type: file.type })
         const result = await uploadToCloudinary(file)

@@ -60,27 +60,36 @@ function PhotographyContent() {
         </div>
       )}
 
-      {/* Category Filters (hide when searching) */}
+      {/* Category: dropdown (hide when searching) */}
       {!q.trim() && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.6 }}
-          className="flex flex-wrap gap-4 justify-center mb-12"
+          className="flex justify-center mb-10"
         >
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-6 py-2 border-b-2 transition-all min-h-[44px] ${
-                selectedCategory === category
-                  ? 'border-white text-white font-medium'
-                  : 'border-transparent text-white/60 hover:border-white/40 hover:text-white/80'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
+          <label htmlFor="category-select" className="sr-only">
+            Category
+          </label>
+          <select
+            id="category-select"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="bg-black border border-white/30 text-white text-center px-6 py-3 min-h-[48px] rounded-none appearance-none cursor-pointer focus:outline-none focus:border-white/60 w-full max-w-[240px] text-base"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(255,255,255,0.7)'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 12px center',
+              backgroundSize: '20px',
+              paddingRight: '40px',
+            }}
+          >
+            {categories.map((cat) => (
+              <option key={cat} value={cat} className="bg-black text-white">
+                {cat === 'All' ? 'All photos' : cat}
+              </option>
+            ))}
+          </select>
         </motion.div>
       )}
 

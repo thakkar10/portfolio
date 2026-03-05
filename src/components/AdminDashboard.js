@@ -74,24 +74,58 @@ export default function AdminDashboard() {
 
     try {
       const token = localStorage.getItem('token')
+      let cloudinaryUrl = ''
+      let cloudinaryPublicId = ''
+
+      // Videos: upload directly to Cloudinary from the browser (no Vercel size limit)
+      if (selectedFile && formData.type === 'video') {
+        const paramsRes = await fetch('/api/cloudinary-upload-params?resource_type=video', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!paramsRes.ok) {
+          const err = await paramsRes.json()
+          throw new Error(err.error || 'Failed to get upload params')
+        }
+        const params = await paramsRes.json()
+        const uploadForm = new FormData()
+        uploadForm.append('file', selectedFile)
+        uploadForm.append('api_key', params.api_key)
+        uploadForm.append('timestamp', params.timestamp)
+        uploadForm.append('signature', params.signature)
+        uploadForm.append('folder', params.folder)
+        uploadForm.append('resource_type', params.resource_type)
+
+        const uploadRes = await fetch(
+          `https://api.cloudinary.com/v1_1/${params.cloud_name}/video/upload`,
+          { method: 'POST', body: uploadForm }
+        )
+        if (!uploadRes.ok) {
+          const text = await uploadRes.text()
+          let errMsg = 'Video upload to Cloudinary failed'
+          try {
+            const j = JSON.parse(text)
+            if (j.error?.message) errMsg = j.error.message
+          } catch (_) {}
+          throw new Error(errMsg)
+        }
+        const uploadResult = await uploadRes.json()
+        cloudinaryUrl = uploadResult.secure_url
+        cloudinaryPublicId = uploadResult.public_id
+      }
+
       const data = new FormData()
-      
-      if (selectedFile) {
+      if (selectedFile && formData.type === 'image') {
         let fileToUpload = selectedFile
-        
-        // Compress images so they're under Vercel's ~4.5 MB request limit
-        if (formData.type === 'image' && selectedFile.size > 4 * 1024 * 1024) {
+        if (selectedFile.size > 4 * 1024 * 1024) {
           console.log('Compressing image for upload...')
           const options = {
-            maxSizeMB: 3.5, // Keep under 4.5 MB Vercel limit
+            maxSizeMB: 3.5,
             maxWidthOrHeight: 1920,
             useWebWorker: true,
             fileType: selectedFile.type,
           }
           fileToUpload = await imageCompression(selectedFile, options)
-          console.log('Image compressed:', fileToUpload.size, 'bytes')
         }
-        
         data.append('file', fileToUpload)
       }
       data.append('title', formData.title)
@@ -100,12 +134,12 @@ export default function AdminDashboard() {
       if (formData.youtubeUrl) data.append('youtubeUrl', formData.youtubeUrl)
       if (formData.vimeoUrl) data.append('vimeoUrl', formData.vimeoUrl)
       data.append('featured', formData.featured)
+      if (cloudinaryUrl) data.append('cloudinaryUrl', cloudinaryUrl)
+      if (cloudinaryPublicId) data.append('cloudinaryPublicId', cloudinaryPublicId)
 
       const res = await fetch('/api/media/upload', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: data,
       })
 
