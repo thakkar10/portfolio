@@ -19,7 +19,7 @@ function PhotographyContent() {
     setLoading(true)
     setError(null)
     if (q.trim()) {
-      fetch(`/api/semantic-image-search?type=image&q=${encodeURIComponent(q.trim())}`)
+      fetch(`/api/search?type=image&q=${encodeURIComponent(q.trim())}`)
         .then(res => res.json())
         .then(data => {
           setImages(Array.isArray(data) ? data : [])

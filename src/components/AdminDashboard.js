@@ -81,10 +81,13 @@ export default function AdminDashboard() {
         (selectedFile.type && selectedFile.type.startsWith('video/')) ||
         /\.(mp4|webm|mov|avi|mkv)$/i.test(selectedFile.name || '')
       )
+      const isOverLimit = selectedFile && selectedFile.size > 4.5 * 1024 * 1024
+      const useDirectUpload = isVideoFile || isOverLimit
 
-      // Videos: always upload directly to Cloudinary (never send to our API → avoids payload limit)
-      if (isVideoFile) {
-        const paramsRes = await fetch('/api/cloudinary-upload-params?resource_type=video', {
+      // Video or any file > 4.5 MB: upload directly to Cloudinary (never send to our API)
+      if (useDirectUpload && selectedFile) {
+        const resourceType = isVideoFile ? 'video' : 'image'
+        const paramsRes = await fetch(`/api/cloudinary-upload-params?resource_type=${resourceType}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (!paramsRes.ok) {
@@ -105,7 +108,7 @@ export default function AdminDashboard() {
         let uploadRes
         try {
           uploadRes = await fetch(
-            `https://api.cloudinary.com/v1_1/${params.cloud_name}/video/upload`,
+            `https://api.cloudinary.com/v1_1/${params.cloud_name}/${resourceType}/upload`,
             { method: 'POST', body: uploadForm, signal: controller.signal }
           )
         } catch (err) {
@@ -132,8 +135,7 @@ export default function AdminDashboard() {
       }
 
       let res
-      if (isVideoFile && cloudinaryUrl && cloudinaryPublicId) {
-        // Video: send JSON only (no FormData, no file) → avoids Vercel payload limit
+      if (useDirectUpload && cloudinaryUrl && cloudinaryPublicId) {
         res = await fetch('/api/media/create', {
           method: 'POST',
           headers: {
@@ -143,7 +145,7 @@ export default function AdminDashboard() {
           body: JSON.stringify({
             title: formData.title,
             category: formData.category,
-            type: 'video',
+            type: isVideoFile ? 'video' : formData.type,
             cloudinaryUrl,
             cloudinaryPublicId,
             youtubeUrl: formData.youtubeUrl || '',
@@ -153,7 +155,7 @@ export default function AdminDashboard() {
         })
       } else {
         const data = new FormData()
-        if (selectedFile && formData.type === 'image' && !isVideoFile) {
+        if (selectedFile && formData.type === 'image' && !useDirectUpload) {
           let fileToUpload = selectedFile
           if (selectedFile.size > 4 * 1024 * 1024) {
             console.log('Compressing image for upload...')
@@ -408,7 +410,10 @@ export default function AdminDashboard() {
               <label htmlFor="featured" className="text-black">Featured</label>
             </div>
             {formData.type === 'video' && (
-              <p className="text-sm text-gray-500">Large videos upload directly to Cloudinary and may take 1–2 minutes.</p>
+              <>
+                <p className="text-sm text-gray-500">Videos upload directly to Cloudinary (no size limit from our server). May take 1–2 min for large files.</p>
+                <p className="text-xs text-amber-600 mt-1">If you see &quot;Request Entity Too Large&quot;, use your main production URL (not a preview link) and hard-refresh (Cmd+Shift+R).</p>
+              </>
             )}
             <button
               type="submit"

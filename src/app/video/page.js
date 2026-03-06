@@ -15,7 +15,7 @@ function VideoContent() {
     setLoading(true)
     setError(null)
     const endpoint = q.trim()
-      ? `/api/semantic-image-search?type=video&q=${encodeURIComponent(q.trim())}`
+      ? `/api/search?type=video&q=${encodeURIComponent(q.trim())}`
       : '/api/media?type=video'
 
     fetch(endpoint)

@@ -1,7 +1,6 @@
 import { Raleway, Inter } from 'next/font/google'
 import './globals.css'
 import Navigation from '@/components/Navigation'
-import SearchFab from '@/components/SearchFab'
 
 const raleway = Raleway({ 
   subsets: ['latin'],
@@ -38,7 +37,7 @@ export default function RootLayout({ children }) {
       <body className={`${raleway.variable} ${inter.variable} font-sans`}>
         <Navigation />
         {children}
-        <SearchFab />
+        {/* SearchFab disabled - AI search turned off */}
       </body>
     </html>
   )

@@ -16,7 +16,7 @@ function DesignContent() {
     setLoading(true)
     setError(null)
     const endpoint = q.trim()
-      ? `/api/semantic-image-search?q=${encodeURIComponent(q.trim())}`
+      ? `/api/search?q=${encodeURIComponent(q.trim())}`
       : '/api/media?category=Design'
 
     fetch(endpoint)
