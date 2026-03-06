@@ -40,7 +40,11 @@ function PhotographyContent() {
           setError(typeof data?.error === 'string' ? data.error : 'Failed to load images')
           setImages([])
         } else {
-          setImages(Array.isArray(data) ? data : [])
+          const raw = Array.isArray(data) ? data : []
+          const filtered = selectedCategory === 'All'
+            ? raw.filter((item) => item.category !== 'Design')
+            : raw
+          setImages(filtered)
         }
         setLoading(false)
       })
