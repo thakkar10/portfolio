@@ -2,171 +2,92 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 
 export default function Navigation() {
   const pathname = usePathname()
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const links = [
-    { href: '/', label: 'HOME' },
-    { href: '/photography', label: 'PHOTOGRAPHY' },
-    { href: '/video', label: 'VIDEO' },
-    { href: '/design', label: 'GRAPIC DESIGN' },
-    { href: '/about', label: 'ABOUT' },
-    { href: '/contact', label: 'CONTACT'}
+    { href: '/', label: 'Home' },
+    { href: '/photography', label: 'Photography' },
+    { href: '/video', label: 'Video' },
+    { href: '/design', label: 'Graphic Design' },
+    { href: '/about', label: 'About' },
+    { href: '/contact', label: 'Contact'}
   ]
 
   const isAdminPage = pathname?.startsWith('/admin')
-
-  // Close menu when route changes
-  useEffect(() => {
-    setIsMenuOpen(false)
-  }, [pathname])
-
-  // Prevent body scroll when menu is open
-  useEffect(() => {
-    if (isMenuOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
-    }
-    return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isMenuOpen])
   
   return (
-    <>
-      <nav 
-        className="fixed top-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-sm transition-all duration-300"
-        style={{
-          paddingTop: 'max(1.5rem, env(safe-area-inset-top))',
-          paddingLeft: 'max(1.5rem, env(safe-area-inset-left))',
-          paddingRight: 'max(1.5rem, env(safe-area-inset-right))',
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-          <div className="flex items-center justify-between">
-            <Link 
-              href="/" 
-              className="text-xs sm:text-sm md:text-base font-light tracking-wider transition-colors text-white/90 hover:text-white min-h-[44px] flex items-center"
-            >
-              HEET THAKKAR
-            </Link>
-            {!isAdminPage && (
-              <>
-                {/* Desktop Navigation - Hidden on mobile */}
-                <div className="hidden md:flex gap-6 lg:gap-8">
-                  {links.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={`text-sm tracking-wider transition-all font-light min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                        pathname === link.href
-                          ? 'text-white'
-                          : 'text-white/60 hover:text-white/90'
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </div>
-
-                {/* Mobile Hamburger Button - Visible on mobile only */}
-                <button
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="md:hidden flex flex-col justify-center items-center w-10 h-10 min-h-[44px] min-w-[44px] space-y-1.5 focus:outline-none"
-                  aria-label="Toggle menu"
+    <nav
+      className="fixed left-0 right-0 top-0 z-40"
+      style={{
+        paddingTop: 'max(0.85rem, env(safe-area-inset-top))',
+        paddingLeft: 'max(0.85rem, env(safe-area-inset-left))',
+        paddingRight: 'max(0.85rem, env(safe-area-inset-right))',
+      }}
+    >
+      <div className="mx-auto max-w-7xl px-3 sm:px-6">
+        <div className="relative overflow-hidden border border-white/12 bg-black/55 px-3 py-2 shadow-[0_24px_80px_rgba(0,0,0,0.42)] backdrop-blur-2xl sm:px-4">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent" />
+          <div className="flex items-center justify-between gap-3">
+          <Link 
+            href="/" 
+            className="group flex min-h-[38px] items-center whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.22em] text-white/90 transition-colors hover:text-white sm:text-xs"
+          >
+            HEET THAKKAR
+            <span className="ml-3 hidden h-px w-8 bg-white/25 transition-colors group-hover:bg-white/60 sm:block" />
+          </Link>
+          {!isAdminPage && (
+            <div className="hidden items-center gap-1 lg:flex">
+              {links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`group relative flex min-h-[38px] items-center px-4 text-[11px] font-medium uppercase tracking-[0.18em] transition-colors ${
+                    pathname === link.href
+                      ? 'text-white'
+                      : 'text-white/52 hover:text-white'
+                  }`}
                 >
-                  <motion.span
-                    animate={isMenuOpen ? { rotate: 45, y: 8 } : { rotate: 0, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="block w-6 h-0.5 bg-white"
+                  {link.label}
+                  <span
+                    className={`absolute bottom-1.5 left-4 right-4 h-px origin-left bg-white transition-transform duration-300 ${
+                      pathname === link.href ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+                    }`}
                   />
-                  <motion.span
-                    animate={isMenuOpen ? { opacity: 0 } : { opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                    className="block w-6 h-0.5 bg-white"
-                  />
-                  <motion.span
-                    animate={isMenuOpen ? { rotate: -45, y: -8 } : { rotate: 0, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="block w-6 h-0.5 bg-white"
-                  />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+                </Link>
+              ))}
+            </div>
+          )}
 
-      {/* Mobile Menu Overlay */}
-      <AnimatePresence>
-        {isMenuOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 md:hidden"
-              onClick={() => setIsMenuOpen(false)}
-              style={{
-                paddingTop: 'max(4rem, calc(4rem + env(safe-area-inset-top)))',
-              }}
-            />
-            
-            {/* Menu Panel */}
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 w-80 max-w-[85vw] bg-black z-50 md:hidden shadow-2xl"
-              style={{
-                paddingTop: 'max(4rem, calc(4rem + env(safe-area-inset-top)))',
-                paddingBottom: 'max(2rem, calc(2rem + env(safe-area-inset-bottom)))',
-                paddingLeft: 'max(2rem, calc(2rem + env(safe-area-inset-left)))',
-                paddingRight: 'max(2rem, calc(2rem + env(safe-area-inset-right)))',
-              }}
-            >
-              <div className="flex flex-col h-full">
-                <div className="mb-8">
-                  <h2 className="text-xl font-light tracking-wider text-white/90 mb-1">Menu</h2>
-                  <div className="w-12 h-px bg-white/30" />
-                </div>
-                
-                <nav className="flex flex-col space-y-2 flex-1">
-                  {links.map((link, index) => (
-                    <motion.div
-                      key={link.href}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05, duration: 0.3 }}
-                    >
-                      <Link
-                        href={link.href}
-                        onClick={() => setIsMenuOpen(false)}
-                        className={`block py-4 px-4 text-base tracking-wider font-light transition-all min-h-[48px] flex items-center ${
-                          pathname === link.href
-                            ? 'text-white border-l-2 border-white'
-                            : 'text-white/70 hover:text-white hover:bg-white/5'
-                        }`}
-                      >
-                        {link.label}
-                      </Link>
-                    </motion.div>
-                  ))}
-                </nav>
+          {!isAdminPage && (
+            <div className="hidden min-h-[38px] items-center text-[10px] uppercase tracking-[0.2em] text-white/42 md:flex lg:hidden">
+              Portfolio Index
+            </div>
+          )}
+          </div>
+
+          {!isAdminPage && (
+            <div className="mt-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden">
+              <div className="flex min-w-max items-center gap-1">
+                {links.filter((link) => link.href !== '/').map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`flex min-h-[36px] items-center border px-2 text-[9px] font-medium uppercase tracking-[0.14em] transition-all ${
+                      pathname === link.href
+                        ? 'border-white/55 bg-white text-black'
+                        : 'border-white/10 text-white/62 hover:border-white/30 hover:text-white'
+                    }`}
+                  >
+                    {link.href === '/photography' ? 'Photo' : link.href === '/design' ? 'Design' : link.label}
+                  </Link>
+                ))}
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </>
+            </div>
+          )}
+        </div>
+      </div>
+    </nav>
   )
 }
-

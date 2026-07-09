@@ -17,7 +17,7 @@
 body {
   color: var(--foreground);
   background: #000000;
-  font-family: var(--font-raleway), 'Inter', system-ui, sans-serif;
+  font-family: var(--font-inter), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-weight: 300;
@@ -30,9 +30,46 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
+::selection {
+  color: #000000;
+  background: rgba(255, 255, 255, 0.86);
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .premium-surface {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.015)),
+      #050505;
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.45);
+  }
+
+  .image-sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.22), transparent 28%),
+      linear-gradient(180deg, transparent 42%, rgba(0, 0, 0, 0.42));
+    opacity: 0;
+    transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .image-sheen:hover::after {
+    opacity: 1;
+  }
+
+  .soft-vignette {
+    background:
+      radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.1), transparent 30%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.1), #000000 74%);
   }
 }
 
@@ -117,5 +154,4 @@ html {
     font-size: 16px !important;
   }
 }
-
 

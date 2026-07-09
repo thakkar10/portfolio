@@ -4,6 +4,12 @@ import { useState, useEffect, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import { useSearchParams } from 'next/navigation'
 
+function videoEmbedUrl(video) {
+  if (video.youtubeUrl) return video.youtubeUrl.replace('watch?v=', 'embed/')
+  if (video.vimeoUrl) return video.vimeoUrl.replace('vimeo.com/', 'player.vimeo.com/video/')
+  return ''
+}
+
 function VideoContent() {
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -40,62 +46,75 @@ function VideoContent() {
   return (
     <>
       {q.trim() && (
-        <div className="text-center text-white/70 mb-6">
+        <div className="mb-8 border border-white/10 p-4 text-center text-sm text-white/62">
           Results for "{q}"
         </div>
       )}
 
       {error && (
-        <div className="text-center py-20 text-amber-400">
-          {error} (Check that the database is connected.)
+        <div className="border border-amber-300/20 bg-amber-300/5 px-6 py-12 text-center text-sm text-amber-200/80">
+          {error} Check that the database is connected.
         </div>
       )}
       {loading ? (
-        <div className="text-center py-20 text-white/60">Loading...</div>
+        <div className="border border-white/10 px-6 py-20 text-center text-[11px] font-semibold uppercase tracking-[0.24em] text-white/42">
+          Loading Motion System
+        </div>
       ) : !error && videos.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-8">
           {videos.map((video, index) => (
-            <motion.div
+            <motion.article
               key={video._id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 42 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1, duration: 0.5 }}
-              className="aspect-video"
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ delay: Math.min(index * 0.08, 0.32), duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="premium-surface grid overflow-hidden lg:grid-cols-[1fr_360px]"
             >
-              {video.youtubeUrl ? (
-                <iframe
-                  src={video.youtubeUrl.replace('watch?v=', 'embed/')}
-                  title={video.title}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              ) : video.vimeoUrl ? (
-                <iframe
-                  src={video.vimeoUrl.replace('vimeo.com/', 'player.vimeo.com/video/')}
-                  title={video.title}
-                  className="w-full h-full"
-                  allow="autoplay; fullscreen; picture-in-picture"
-                  allowFullScreen
-                />
-              ) : video.cloudinaryUrl ? (
-                <video
-                  src={video.cloudinaryUrl}
-                  controls
-                  className="w-full h-full object-cover"
-                >
-                  Your browser does not support the video tag.
-                </video>
-              ) : null}
-              {video.title && (
-                <h3 className="mt-4 text-xl font-light text-white">{video.title}</h3>
-              )}
-            </motion.div>
+              <div className="relative aspect-video bg-white/[0.03]">
+                {video.youtubeUrl || video.vimeoUrl ? (
+                  <iframe
+                    src={videoEmbedUrl(video)}
+                    title={video.title}
+                    className="h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : video.cloudinaryUrl ? (
+                  <video
+                    src={video.cloudinaryUrl}
+                    controls
+                    className="h-full w-full object-cover"
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                ) : null}
+              </div>
+              <div className="flex flex-col justify-end border-t border-white/10 p-6 lg:border-l lg:border-t-0 lg:p-8">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/42">
+                  {video.category || 'Motion Piece'} / {String(index + 1).padStart(2, '0')}
+                </p>
+                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.03em] text-white">
+                  {video.title || 'Untitled Film'}
+                </h2>
+                {video.caption && (
+                  <p className="mt-4 text-sm leading-6 text-white/62">
+                    {video.caption}
+                  </p>
+                )}
+              </div>
+            </motion.article>
           ))}
         </div>
       ) : !error ? (
-        <div className="text-center py-20 text-white/60">{q.trim() ? 'No results for your search.' : 'No videos found.'}</div>
+        <div className="border border-white/10 px-6 py-20 text-center">
+          <p className="text-lg font-semibold tracking-[-0.02em] text-white">
+            {q.trim() ? 'No results found.' : 'No videos are published yet.'}
+          </p>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-white/48">
+            Add motion work from the admin dashboard and it will appear here as cinematic feature modules.
+          </p>
+        </div>
       ) : null}
     </>
   )
@@ -104,26 +123,39 @@ function VideoContent() {
 export default function VideoPage() {
   return (
     <main 
-      className="min-h-screen bg-black"
+      className="min-h-screen overflow-hidden bg-black text-white"
       style={{
-        paddingTop: 'max(6rem, calc(6rem + env(safe-area-inset-top)))',
+        paddingTop: 'max(8.5rem, calc(8.5rem + env(safe-area-inset-top)))',
       }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12">
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-4xl sm:text-5xl md:text-7xl font-heading font-normal mb-6 sm:mb-8 text-center text-white"
-        >
-          Video
-        </motion.h1>
+      <section className="relative px-4 pb-20 sm:px-6">
+        <div className="pointer-events-none absolute inset-0 soft-vignette" />
+        <div className="relative mx-auto max-w-7xl">
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+            className="mb-14 grid gap-8 lg:grid-cols-[1fr_0.78fr] lg:items-end"
+          >
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-white/42">
+                Motion Direction
+              </p>
+              <h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-[-0.045em] text-white sm:text-7xl lg:text-8xl">
+                Video with cinematic pacing.
+              </h1>
+            </div>
+            <p className="max-w-xl text-sm leading-7 text-white/62 sm:text-base">
+              Motion work presented as feature releases: large-format playback, quiet metadata,
+              and a layout that gives each sequence room to breathe.
+            </p>
+          </motion.div>
 
-        <Suspense fallback={<div className="text-center py-20 text-white/60">Loading...</div>}>
-          <VideoContent />
-        </Suspense>
-      </div>
+          <Suspense fallback={<div className="border border-white/10 px-6 py-20 text-center text-white/50">Loading...</div>}>
+            <VideoContent />
+          </Suspense>
+        </div>
+      </section>
     </main>
   )
 }
-

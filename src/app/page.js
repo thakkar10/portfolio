@@ -3,109 +3,100 @@
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion'
 import { useEffect, useState, useRef } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
+
+const showcaseFallbacks = [
+  {
+    title: 'Photography',
+    eyebrow: 'Still Image Archive',
+    description: 'Portrait, travel, street, and nature frames composed around light, texture, and atmosphere.',
+    href: '/photography',
+    image: null,
+    cta: 'Explore Photo',
+  },
+  {
+    title: 'Motion',
+    eyebrow: 'Video Direction',
+    description: 'Cinematic sequences, pacing, and visual rhythm designed to feel immersive and deliberate.',
+    href: '/video',
+    image: null,
+    cta: 'View Video',
+  },
+  {
+    title: 'Design',
+    eyebrow: 'Graphic Systems',
+    description: 'Visual design work with a focus on clarity, contrast, and modern brand expression.',
+    href: '/design',
+    image: null,
+    cta: 'See Design',
+  },
+]
 
 export default function Home() {
   const [featuredImages, setFeaturedImages] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [query, setQuery] = useState('')
-  const [searching, setSearching] = useState(false)
-  const [searchResults, setSearchResults] = useState(null)
   const heroRef = useRef(null)
   const featuredRef = useRef(null)
   
-  const quickPrompts = [
-    'travel',
-    'portraits',
-    'street',
-    'nature',
-    'design',
-  ]
-
   // Hardcoded cover photo - update this path to match your cover image filename
-  const coverPhoto = '/cover.jpg'
+  const coverPhoto = '/Cover_New.png'
 
-  // Scroll animations - track scroll progress relative to viewport
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"]
   })
   
-  // Smooth spring animations
   const smoothHeroProgress = useSpring(scrollYProgress, { stiffness: 100, damping: 30 })
 
-  // Transform values for parallax and fade effects
-  const heroImageY = useTransform(smoothHeroProgress, [0, 1], ['0%', '50%'])
-  const heroImageOpacity = useTransform(smoothHeroProgress, [0, 0.6, 1], [1, 0.6, 0.2])
+  const heroImageY = useTransform(smoothHeroProgress, [0, 1], ['0%', '34%'])
+  const heroImageOpacity = useTransform(smoothHeroProgress, [0, 0.7, 1], [1, 0.72, 0.22])
   const signatureOpacity = useTransform(smoothHeroProgress, [0, 0.5], [1, 0])
   const signatureScale = useTransform(smoothHeroProgress, [0, 0.5], [1, 0.85])
   const signatureY = useTransform(smoothHeroProgress, [0, 0.5], ['0%', '-30%'])
-  const scrollPromptOpacity = useTransform(smoothHeroProgress, [0, 0.4], [1, 0])
-  const scrollPromptY = useTransform(smoothHeroProgress, [0, 0.4], ['0%', '30%'])
+  const detailOpacity = useTransform(smoothHeroProgress, [0, 0.42], [1, 0])
+  const detailY = useTransform(smoothHeroProgress, [0, 0.42], ['0%', '18%'])
 
   useEffect(() => {
-    // Fetch featured images first; if none, show latest media so something appears
     setLoading(true)
     setError(null)
-    fetch('/api/media?featured=true&limit=10')
+    fetch('/api/media?featured=true&limit=6')
       .then(res => res.json().then(data => ({ res, data })))
       .then(({ res, data }) => {
         if (!res.ok) {
           throw new Error(typeof data?.error === 'string' ? data.error : `Failed to load gallery (${res.status})`)
         }
-        const list = Array.isArray(data) ? data : []
-        if (list.length > 0) {
-          setFeaturedImages(list)
-          setLoading(false)
-          return
-        }
-        // No featured items — fetch latest media so homepage still shows photos
-        return fetch('/api/media?limit=10')
-          .then(r => r.json().then(d => ({ r, d })))
-          .then(({ r, d }) => {
-            if (!r.ok) throw new Error(typeof d?.error === 'string' ? d.error : `Failed to load gallery (${r.status})`)
-            setFeaturedImages(Array.isArray(d) ? d : [])
-          })
-          .finally(() => setLoading(false))
+        setFeaturedImages(Array.isArray(data) ? data : [])
+        setLoading(false)
       })
       .catch(err => {
         setError(err.message)
+        setFeaturedImages([])
         setLoading(false)
       })
   }, [])
 
-  async function handleSearch(e) {
-    e?.preventDefault()
-    if (!query.trim()) {
-      setSearchResults(null)
-      return
-    }
-    try {
-      setSearching(true)
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`)
-      const data = await res.json()
-      setSearchResults(Array.isArray(data) ? data : [])
-    } catch (err) {
-      setSearchResults([])
-    } finally {
-      setSearching(false)
-    }
-  }
-
-  const itemsToShow = searchResults !== null ? searchResults : featuredImages
+  const featuredCards = featuredImages.length > 0
+    ? featuredImages.slice(0, 6).map((item, index) => ({
+        title: item.title || `Selected Frame ${index + 1}`,
+        eyebrow: item.category || 'Selected Work',
+        description: item.caption || 'A curated preview from the photography archive.',
+        href: '/photography',
+        image: item.cloudinaryUrl,
+        cta: 'Open Archive',
+      }))
+    : showcaseFallbacks
 
   return (
-    <main className="bg-black" style={{ margin: 0, padding: 0 }}>
-      {/* Hero Section with Image */}
+    <main className="bg-black text-white" style={{ margin: 0, padding: 0 }}>
       <motion.section
         ref={heroRef}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
-        className="relative min-h-screen flex items-center justify-center bg-black overflow-hidden"
+        className="relative min-h-screen overflow-hidden bg-black"
         style={{ marginBottom: 0 }}
       >
-        {/* Background Image - Hero Cover with Parallax */}
         {coverPhoto && (
           <motion.div 
             className="absolute inset-0 z-0"
@@ -122,28 +113,31 @@ export default function Home() {
                 objectPosition: 'center center'
               }}
             />
-            <motion.div 
-              className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70"
-              style={{ opacity: heroImageOpacity }}
-            />
-            <div className="absolute inset-0 bg-black/20" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_26%,rgba(255,255,255,0.08),transparent_28%),linear-gradient(180deg,rgba(0,0,0,0.42)_0%,rgba(0,0,0,0.24)_38%,rgba(0,0,0,0.92)_100%)]" />
+            <div className="absolute inset-0 bg-black/18" />
           </motion.div>
         )}
         
-        {/* Solid background when no image */}
         {!coverPhoto && (
           <div className="absolute inset-0 z-0 bg-black" />
         )}
 
-        {/* Content Overlay */}
         <div 
-          className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 sm:px-6 text-center"
+          className="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 text-center sm:px-6"
           style={{
-            paddingTop: 'max(2rem, env(safe-area-inset-top))',
-            paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
+            paddingTop: 'max(8rem, calc(8rem + env(safe-area-inset-top)))',
+            paddingBottom: 'max(6rem, calc(6rem + env(safe-area-inset-bottom)))',
           }}
         >
-          {/* Signature Image with Scroll-triggered Fade */}
+          <motion.div
+            style={{ opacity: detailOpacity, y: detailY }}
+            className="mb-8 flex items-center gap-3 text-[10px] font-medium uppercase tracking-[0.32em] text-white/58 sm:text-xs"
+          >
+            <span className="h-px w-8 bg-white/28" />
+            Visual Systems
+            <span className="h-px w-8 bg-white/28" />
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -166,19 +160,42 @@ export default function Home() {
               />
             </div>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            style={{ opacity: detailOpacity, y: detailY }}
+            className="mx-auto max-w-2xl"
+          >
+            <p className="text-base leading-7 text-white/72 sm:text-lg">
+              A cinematic portfolio of photography, motion, and design built with
+              the precision of a product launch and the restraint of an editorial system.
+            </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/photography"
+                className="group flex min-h-[46px] items-center justify-center bg-white px-6 text-[11px] font-semibold uppercase tracking-[0.2em] text-black transition-transform duration-300 hover:scale-[1.02]"
+              >
+                View Photography
+              </Link>
+              <Link
+                href="/video"
+                className="flex min-h-[46px] items-center justify-center border border-white/18 px-6 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/78 transition-colors hover:border-white/48 hover:text-white"
+              >
+                Watch Motion
+              </Link>
+            </div>
+          </motion.div>
         </div>
 
-        {/* Animated Scroll Prompt with Scroll-triggered Fade */}
-        <motion.div
+        <motion.button
+          type="button"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute left-0 right-0 z-10 flex justify-center items-center"
-          style={{ 
-            bottom: 'max(3rem, calc(3rem + env(safe-area-inset-bottom)))',
-            opacity: scrollPromptOpacity,
-            y: scrollPromptY
-          }}
+          transition={{ delay: 1.1, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3 text-[10px] font-medium uppercase tracking-[0.28em] text-white/50 transition-colors hover:text-white sm:bottom-10"
+          style={{ opacity: detailOpacity, y: detailY }}
           onClick={() => {
             const featuredSection = document.getElementById('featured-work')
             if (featuredSection) {
@@ -186,120 +203,111 @@ export default function Home() {
             }
           }}
         >
-          <div className="flex flex-col items-center justify-center gap-2 sm:gap-3 cursor-pointer group min-h-[60px] min-w-[120px]">
-            {/* Animated Text */}
-            <motion.div
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              className="text-xs sm:text-sm md:text-base text-white/70 tracking-[0.15em] sm:tracking-[0.2em] uppercase font-light group-hover:text-white/90 transition-colors duration-300 text-center"
-            >
-              Scroll to explore
-            </motion.div>
-            
-            {/* Animated Arrow */}
-            <motion.div
-              animate={{ y: [0, 8, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-              className="flex items-center justify-center"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-white/60 group-hover:text-white/80 transition-colors duration-300 sm:w-6 sm:h-6"
-              >
-                <path d="M7 13l5 5 5-5M7 6l5 5 5-5" />
-              </svg>
-            </motion.div>
-          </div>
-        </motion.div>
+          Explore
+          <span className="relative h-11 w-px overflow-hidden bg-white/14">
+            <span className="absolute left-0 top-0 h-5 w-px animate-pulse bg-white/70" />
+          </span>
+        </motion.button>
       </motion.section>
 
-      {/* Featured Grid */}
-      <section 
-          ref={featuredRef}
-          id="featured-work" 
-          className="relative pt-20 sm:pt-24 md:pt-32 pb-20 sm:pb-24 md:pb-32 px-4 sm:px-6 bg-black" 
-          style={{ 
-            marginTop: 0, 
-            marginBottom: 0,
-            paddingBottom: 'max(5rem, calc(5rem + env(safe-area-inset-bottom)))',
-          }}
-        >
-          <div className="max-w-7xl mx-auto">
-            <motion.h2
-              initial={{ opacity: 0, y: 50 }}
+      <section
+        ref={featuredRef}
+        id="featured-work"
+        className="relative overflow-hidden bg-black px-4 py-24 text-white sm:px-6 sm:py-32 lg:py-40"
+      >
+        <div className="pointer-events-none absolute inset-0 soft-vignette" />
+        <div className="relative mx-auto max-w-7xl">
+          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+            <motion.div
+              initial={{ opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: false, margin: "-150px" }}
-              transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-              className="text-4xl md:text-5xl font-light tracking-wider mb-16 md:mb-20 text-center text-white/90"
+              viewport={{ once: true, margin: "-120px" }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             >
-              Featured Work
-            </motion.h2>
-            
-            {loading && (
-              <div className="text-center text-white/60 py-12">
-                Loading images...
-              </div>
-            )}
-            
-            {error && (
-              <div className="text-center text-red-400 py-12">
-                Error loading images: {error}
-              </div>
-            )}
-            
-            {featuredImages && featuredImages.length === 0 && (
-              <div className="text-center text-white/60 py-12">
-                <p className="mb-2">No results.</p>
-                <p className="text-sm">Upload images from the admin dashboard and mark them as featured.</p>
-              </div>
-            )}
-            
-            {featuredImages && featuredImages.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
-                {featuredImages.map((item, index) => (
-                <motion.div
-                  key={item._id}
-                  initial={{ opacity: 0, y: 60, scale: 0.9 }}
-                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                  viewport={{ once: false, margin: "-100px" }}
-                  transition={{ 
-                    delay: Math.min(index * 0.1, 0.5), 
-                    duration: 0.9, 
-                    ease: [0.16, 1, 0.3, 1],
-                    opacity: { duration: 0.6 },
-                    scale: { duration: 0.8 }
-                  }}
-                  className="relative aspect-square overflow-hidden group cursor-pointer"
-                  whileHover={{ scale: 1.02, transition: { duration: 0.3 } }}
-                >
-                  {item.type === 'image' && item.cloudinaryUrl && (
-                    <>
-                      <Image
-                        src={item.cloudinaryUrl}
-                        alt={item.title || 'Work'}
-                        fill
-                        className="object-cover transition-all duration-700 ease-out group-hover:scale-110"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-500" />
-                      <div className="absolute inset-0 border border-white/0 group-hover:border-white/10 transition-all duration-500" />
-                    </>
-                  )}
-                </motion.div>
-                ))}
-              </div>
-            )}
+              <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-white/42">
+                Selected Work
+              </p>
+              <h2 className="mt-5 max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-white sm:text-6xl lg:text-7xl">
+                Built like a launch. Experienced like a gallery.
+              </h2>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 28 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-120px" }}
+              transition={{ delay: 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="max-w-xl text-sm leading-7 text-white/62 sm:text-base"
+            >
+              <p>
+                This is a preview, not the archive. Each doorway below leads into a more
+                complete body of work across stills, motion, and graphic systems.
+              </p>
+            </motion.div>
           </div>
-        </section>
+
+          {loading && (
+            <div className="mt-16 border border-white/10 p-8 text-sm uppercase tracking-[0.2em] text-white/42">
+              Curating selection...
+            </div>
+          )}
+          
+          {error && (
+            <div className="mt-16 border border-white/10 p-8 text-sm text-white/46">
+              Live featured media is unavailable, so this preview is using the curated portfolio pathways.
+            </div>
+          )}
+
+          {!loading && (
+            <div className="mt-16 grid gap-4 lg:grid-cols-12 lg:gap-5">
+              {featuredCards.map((item, index) => (
+                <motion.div
+                  key={`${item.title}-${index}`}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-90px" }}
+                  transition={{
+                    delay: Math.min(index * 0.08, 0.32),
+                    duration: 0.8,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  className={index === 0 ? 'lg:col-span-7 lg:row-span-2' : 'lg:col-span-5'}
+                >
+                  <Link
+                    href={item.href}
+                    className={`group image-sheen premium-surface block ${index === 0 ? 'min-h-[620px]' : 'min-h-[300px]'}`}
+                  >
+                    {item.image && (
+                      <Image
+                        src={item.image}
+                        alt={item.title}
+                        fill
+                        className="object-cover opacity-78 transition duration-700 ease-out group-hover:scale-[1.035] group-hover:opacity-95"
+                        sizes={index === 0 ? '(max-width: 1024px) 100vw, 58vw' : '(max-width: 1024px) 100vw, 42vw'}
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/45">
+                        {item.eyebrow}
+                      </p>
+                      <h3 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-white sm:text-4xl">
+                        {item.title}
+                      </h3>
+                      <p className="mt-4 max-w-xl text-sm leading-6 text-white/62">
+                        {item.description}
+                      </p>
+                      <div className="mt-6 inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/78">
+                        {item.cta}
+                        <span className="h-px w-8 bg-white/38 transition-all duration-300 group-hover:w-12 group-hover:bg-white" />
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
     </main>
   )
 }
-
