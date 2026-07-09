@@ -72,13 +72,13 @@ function PhotographyContent() {
           transition={{ delay: 0.2, duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
           className="mb-14 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          <div className="mx-auto flex w-max max-w-full items-center gap-2">
+          <div className="mx-auto flex w-max min-w-full items-center gap-2 sm:justify-center">
             {categories.map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`min-h-[42px] border px-4 text-[10px] font-semibold uppercase tracking-[0.2em] transition-all ${
+                className={`min-h-[42px] shrink-0 whitespace-nowrap border px-4 text-[10px] font-semibold uppercase tracking-[0.2em] transition-all ${
                   selectedCategory === cat
                     ? 'border-white bg-white text-black'
                     : 'border-white/12 text-white/56 hover:border-white/35 hover:text-white'
