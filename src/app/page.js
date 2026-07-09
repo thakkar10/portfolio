@@ -195,8 +195,8 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.1, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3 text-[10px] font-medium uppercase tracking-[0.28em] text-white/50 transition-colors hover:text-white sm:bottom-10"
-          style={{ opacity: detailOpacity, y: detailY }}
+          className="absolute bottom-8 left-1/2 z-10 flex flex-col items-center gap-3 text-[10px] font-medium uppercase tracking-[0.28em] text-white/50 transition-colors hover:text-white sm:bottom-10"
+          style={{ opacity: detailOpacity, x: '-50%', y: detailY }}
           onClick={() => {
             const featuredSection = document.getElementById('featured-work')
             if (featuredSection) {
