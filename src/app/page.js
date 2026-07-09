@@ -4,6 +4,7 @@ import { motion, useScroll, useTransform, useSpring } from 'framer-motion'
 import { useEffect, useState, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { shuffleItems } from '@/lib/shuffle'
 
 const showcaseFallbacks = [
   {
@@ -66,7 +67,7 @@ export default function Home() {
         if (!res.ok) {
           throw new Error(typeof data?.error === 'string' ? data.error : `Failed to load gallery (${res.status})`)
         }
-        setFeaturedImages(Array.isArray(data) ? data : [])
+        setFeaturedImages(Array.isArray(data) ? shuffleItems(data) : [])
         setLoading(false)
       })
       .catch(err => {
@@ -228,7 +229,7 @@ export default function Home() {
                 Selected Work
               </p>
               <h2 className="mt-5 max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-white sm:text-6xl lg:text-7xl">
-                Built like a launch. Experienced like a gallery.
+                Cinematic work. Curated with intention.
               </h2>
             </motion.div>
             <motion.div

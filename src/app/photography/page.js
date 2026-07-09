@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import MasonryGrid from '@/components/MasonryGrid'
 import { useSearchParams } from 'next/navigation'
+import { shuffleItems } from '@/lib/shuffle'
 
 const categories = ['All', 'Portraits', 'Travel', 'Nature', 'Street', 'Events']
 
@@ -22,7 +23,7 @@ function PhotographyContent() {
       fetch(`/api/search?type=image&q=${encodeURIComponent(q.trim())}`)
         .then(res => res.json())
         .then(data => {
-          setImages(Array.isArray(data) ? data : [])
+          setImages(Array.isArray(data) ? shuffleItems(data) : [])
           setLoading(false)
         })
         .catch(err => {
@@ -44,7 +45,7 @@ function PhotographyContent() {
           const filtered = selectedCategory === 'All'
             ? raw.filter((item) => item.category !== 'Design')
             : raw
-          setImages(filtered)
+          setImages(shuffleItems(filtered))
         }
         setLoading(false)
       })

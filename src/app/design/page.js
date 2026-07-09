@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import MasonryGrid from '@/components/MasonryGrid'
 import { useSearchParams } from 'next/navigation'
+import { shuffleItems } from '@/lib/shuffle'
 
 function DesignContent() {
   const [designs, setDesigns] = useState([])
@@ -26,7 +27,7 @@ function DesignContent() {
           setError(typeof data?.error === 'string' ? data.error : 'Failed to load designs')
           setDesigns([])
         } else {
-          setDesigns(Array.isArray(data) ? data : [])
+          setDesigns(Array.isArray(data) ? shuffleItems(data) : [])
         }
         setLoading(false)
       })
