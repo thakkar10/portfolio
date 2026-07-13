@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 const layoutClasses = [
   'lg:col-span-7 lg:row-span-2 min-h-[520px]',
@@ -13,14 +13,25 @@ const layoutClasses = [
   'lg:col-span-4 min-h-[380px]',
 ]
 
-export default function MasonryGrid({ items }) {
+export default function MasonryGrid({ items, initialSelectedId }) {
   const [selectedIndex, setSelectedIndex] = useState(null)
+  const openedInitialIdRef = useRef(null)
 
   const selectedImage = selectedIndex !== null ? items[selectedIndex] : null
 
   const orderedItems = useMemo(() => {
     return items.map((item, index) => ({ ...item, displayIndex: index }))
   }, [items])
+
+  useEffect(() => {
+    if (!initialSelectedId || openedInitialIdRef.current === initialSelectedId) return
+
+    const matchingIndex = items.findIndex((item) => item._id === initialSelectedId)
+    if (matchingIndex === -1) return
+
+    openedInitialIdRef.current = initialSelectedId
+    setSelectedIndex(matchingIndex)
+  }, [initialSelectedId, items])
 
   useEffect(() => {
     if (!selectedImage) return

@@ -82,7 +82,7 @@ export default function Home() {
         title: item.title || `Selected Frame ${index + 1}`,
         eyebrow: item.category || 'Selected Work',
         description: item.caption || 'A curated preview from the photography archive.',
-        href: '/photography',
+        href: item._id ? `/photography?image=${item._id}` : '/photography',
         image: item.cloudinaryUrl,
         cta: 'Open Archive',
       }))

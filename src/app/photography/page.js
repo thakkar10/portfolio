@@ -15,6 +15,7 @@ function PhotographyContent() {
   const [error, setError] = useState(null)
   const searchParams = useSearchParams()
   const q = searchParams.get('q') || ''
+  const imageId = searchParams.get('image') || ''
 
   useEffect(() => {
     setLoading(true)
@@ -101,7 +102,7 @@ function PhotographyContent() {
           Loading Image System
         </div>
       ) : !error && images.length > 0 ? (
-        <MasonryGrid items={images} />
+        <MasonryGrid items={images} initialSelectedId={imageId} />
       ) : !error ? (
         <div className="border border-white/10 px-6 py-20 text-center">
           <p className="text-lg font-semibold tracking-[-0.02em] text-white">
