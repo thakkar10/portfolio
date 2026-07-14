@@ -107,7 +107,7 @@ export default function MasonryGrid({ items, initialSelectedId }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/96 p-4 text-white backdrop-blur-xl sm:p-8"
+            className="fixed inset-0 z-50 flex h-[100svh] items-center justify-center overflow-hidden bg-black/96 p-3 text-white backdrop-blur-xl sm:p-8"
             onClick={() => setSelectedIndex(null)}
           >
             <motion.div
@@ -115,37 +115,37 @@ export default function MasonryGrid({ items, initialSelectedId }) {
               animate={{ y: 0, scale: 1 }}
               exit={{ y: 20, scale: 0.98 }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="relative grid max-h-full w-full max-w-7xl gap-6 lg:grid-cols-[1fr_320px] lg:items-end"
+              className="relative flex h-full w-full max-w-7xl min-h-0 flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="relative flex h-[72vh] items-center justify-center overflow-hidden bg-white/[0.03]">
+              <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-white/[0.03] lg:h-full">
                 <Image
                   src={selectedImage.cloudinaryUrl}
                   alt={selectedImage.title || 'Full size image'}
                   width={1800}
                   height={1200}
-                  className="max-h-full w-auto max-w-full object-contain"
+                  className="max-h-full max-w-full object-contain"
                   priority
                 />
               </div>
-              <aside className="border-t border-white/12 pt-6 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+              <aside className="shrink-0 border-t border-white/12 pt-3 lg:flex lg:h-full lg:flex-col lg:justify-end lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/42">
                   {selectedImage.category || 'Selected Image'}
                 </p>
-                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.03em]">
+                <h2 className="mt-3 line-clamp-2 text-2xl font-semibold tracking-[-0.03em] sm:text-3xl lg:mt-4">
                   {selectedImage.title || 'Untitled Frame'}
                 </h2>
                 {selectedImage.caption && (
-                  <p className="mt-4 text-sm leading-6 text-white/62">
+                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-white/62 lg:mt-4 lg:line-clamp-none">
                     {selectedImage.caption}
                   </p>
                 )}
-                <div className="mt-8 flex items-center gap-3">
+                <div className="mt-4 flex items-center gap-2 sm:gap-3 lg:mt-8">
                   <button
                     type="button"
                     onClick={() => setSelectedIndex((current) => Math.max((current || 0) - 1, 0))}
                     disabled={selectedIndex === 0}
-                    className="min-h-[42px] border border-white/14 px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70 transition-colors hover:border-white/42 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                    className="min-h-[42px] border border-white/14 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70 transition-colors hover:border-white/42 hover:text-white disabled:cursor-not-allowed disabled:opacity-35 sm:px-4 sm:tracking-[0.2em]"
                   >
                     Prev
                   </button>
@@ -153,14 +153,14 @@ export default function MasonryGrid({ items, initialSelectedId }) {
                     type="button"
                     onClick={() => setSelectedIndex((current) => Math.min((current || 0) + 1, items.length - 1))}
                     disabled={selectedIndex === items.length - 1}
-                    className="min-h-[42px] border border-white/14 px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70 transition-colors hover:border-white/42 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                    className="min-h-[42px] border border-white/14 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70 transition-colors hover:border-white/42 hover:text-white disabled:cursor-not-allowed disabled:opacity-35 sm:px-4 sm:tracking-[0.2em]"
                   >
                     Next
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedIndex(null)}
-                    className="ml-auto min-h-[42px] bg-white px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-black transition-transform hover:scale-[1.02]"
+                    className="ml-auto min-h-[42px] bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-black transition-transform hover:scale-[1.02] sm:px-4 sm:tracking-[0.2em]"
                   >
                     Close
                   </button>

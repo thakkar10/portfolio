@@ -12,11 +12,10 @@ async function getGenAI() {
   return _genAI
 }
 
-export async function captionImage(url) {
+export async function captionImage(url, prompt = 'Provide a concise, descriptive caption for this image suitable for search. Focus on visual elements, style, mood, and subject matter.') {
   const genAI = await getGenAI()
   // Use gemini-2.5-flash-preview-05-20 for image understanding (fast and free tier)
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' })
-  const prompt = `Provide a concise, descriptive caption for this image suitable for search. Focus on visual elements, style, mood, and subject matter.`
   
   // Fetch image and convert to base64
   const imageResponse = await fetch(url)

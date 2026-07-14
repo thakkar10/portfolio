@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import Media from '@/models/Media'
 import { verifyToken } from '@/middleware/auth'
+import { generateMediaSummary } from '@/lib/mediaSummary'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,7 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { title, category, type, cloudinaryUrl, cloudinaryPublicId, youtubeUrl = '', vimeoUrl = '', featured = false } = body
+    const { title, category, type, cloudinaryUrl, cloudinaryPublicId, youtubeUrl = '', vimeoUrl = '', featured = false, caption = '' } = body
 
     if (!title || typeof title !== 'string' || !title.trim()) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 })
@@ -39,15 +40,26 @@ export async function POST(request) {
 
     await connectDB()
 
+    const mediaType = type || 'video'
+    const mediaCaption = (caption && typeof caption === 'string')
+      ? caption.trim()
+      : await generateMediaSummary({
+        title: title.trim(),
+        category,
+        type: mediaType,
+        cloudinaryUrl: cloudinaryUrl.trim(),
+      })
+
     const media = new Media({
       title: title.trim(),
       category: category || '',
-      type: type || 'video',
+      type: mediaType,
       cloudinaryUrl: cloudinaryUrl.trim(),
       cloudinaryPublicId: cloudinaryPublicId.trim(),
       youtubeUrl: (youtubeUrl && typeof youtubeUrl === 'string') ? youtubeUrl.trim() : '',
       vimeoUrl: (vimeoUrl && typeof vimeoUrl === 'string') ? vimeoUrl.trim() : '',
       featured: !!featured,
+      caption: mediaCaption,
     })
 
     await media.save()

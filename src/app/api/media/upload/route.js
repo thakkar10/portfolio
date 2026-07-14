@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb'
 import Media from '@/models/Media'
 import { verifyToken } from '@/middleware/auth'
 import { uploadToCloudinary } from '@/lib/cloudinary'
+import { generateMediaSummary } from '@/lib/mediaSummary'
 
 // Mark as dynamic to prevent build-time evaluation
 export const dynamic = 'force-dynamic'
@@ -34,6 +35,7 @@ export async function POST(request) {
     const featured = formData.get('featured') === 'true'
     const cloudinaryUrlFromClient = formData.get('cloudinaryUrl')
     const cloudinaryPublicIdFromClient = formData.get('cloudinaryPublicId')
+    const captionFromClient = formData.get('caption')
 
     console.log('📋 Form data:', { title, category, type, hasFile: !!file, fileSize: file?.size, hasDirectUrl: !!cloudinaryUrlFromClient })
 
@@ -84,6 +86,15 @@ export async function POST(request) {
       }
     }
 
+    const caption = captionFromClient
+      ? String(captionFromClient).trim()
+      : await generateMediaSummary({
+        title,
+        category,
+        type,
+        cloudinaryUrl,
+      })
+
     const media = new Media({
       title,
       category,
@@ -93,6 +104,7 @@ export async function POST(request) {
       youtubeUrl,
       vimeoUrl,
       featured,
+      caption,
     })
 
     await media.save()
@@ -111,4 +123,3 @@ export async function POST(request) {
     )
   }
 }
-
