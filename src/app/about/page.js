@@ -2,8 +2,53 @@
 
 import { motion } from 'framer-motion'
 import Image from 'next/image'
+import { useEffect, useState } from 'react'
+
+const fallbackAboutContent = {
+  body: `His work is built around the tension between structure and instinct:
+composing with technical precision, then leaving enough space for a
+frame to feel human. Across quiet landscapes, candid street moments,
+portraits, and cinematic sequences, the goal is the same: create images
+that feel intentional without losing their pulse.
+
+A background in computer science and design informs the way he thinks
+about systems, pacing, interaction, and presentation. The result is a
+creative practice that treats each photograph, film, and digital surface
+as part of a larger visual language.`,
+  primaryImageUrl: '/me.jpg',
+  secondaryImageUrl: '/me2.jpg',
+}
 
 export default function AboutPage() {
+  const [aboutContent, setAboutContent] = useState(fallbackAboutContent)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const fetchAboutContent = async () => {
+      try {
+        const res = await fetch('/api/about-content')
+        if (!res.ok) return
+        const data = await res.json()
+        if (isMounted) {
+          setAboutContent({
+            body: data.body || fallbackAboutContent.body,
+            primaryImageUrl: data.primaryImageUrl || fallbackAboutContent.primaryImageUrl,
+            secondaryImageUrl: data.secondaryImageUrl || fallbackAboutContent.secondaryImageUrl,
+          })
+        }
+      } catch (error) {
+        console.error('About content fetch error:', error)
+      }
+    }
+
+    fetchAboutContent()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   return (
     <main 
       className="min-h-screen overflow-hidden bg-black text-white"
@@ -41,7 +86,7 @@ export default function AboutPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="premium-surface relative aspect-[4/5]">
                 <Image
-                  src="/me.jpg"
+                  src={aboutContent.primaryImageUrl}
                   alt="Heet Thakkar"
                   fill
                   sizes="(max-width: 768px) 100vw, 40vw"
@@ -51,7 +96,7 @@ export default function AboutPage() {
               </div>
               <div className="premium-surface relative aspect-[4/5] sm:mt-16">
                 <Image
-                  src="/me2.jpg"
+                  src={aboutContent.secondaryImageUrl}
                   alt="Heet Thakkar"
                   fill
                   sizes="(max-width: 768px) 100vw, 40vw"
@@ -62,19 +107,11 @@ export default function AboutPage() {
             </div>
 
             <div className="border-l border-white/12 pl-6 text-sm leading-7 text-white/66 sm:text-base">
-              <p>
-                His work is built around the tension between structure and instinct:
-                composing with technical precision, then leaving enough space for a
-                frame to feel human. Across quiet landscapes, candid street moments,
-                portraits, and cinematic sequences, the goal is the same: create images
-                that feel intentional without losing their pulse.
-              </p>
-              <p className="mt-6">
-                A background in computer science and design informs the way he thinks
-                about systems, pacing, interaction, and presentation. The result is a
-                creative practice that treats each photograph, film, and digital surface
-                as part of a larger visual language.
-              </p>
+              {aboutContent.body.split(/\n{2,}/).map((paragraph, index) => (
+                <p key={paragraph} className={index > 0 ? 'mt-6' : ''}>
+                  {paragraph}
+                </p>
+              ))}
             </div>
           </motion.div>
         </div>

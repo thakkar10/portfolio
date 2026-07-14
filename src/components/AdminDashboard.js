@@ -9,7 +9,19 @@ export default function AdminDashboard() {
   const [media, setMedia] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [savingAbout, setSavingAbout] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
+  const [aboutContent, setAboutContent] = useState({
+    body: '',
+    primaryImageUrl: '',
+    primaryImagePublicId: '',
+    secondaryImageUrl: '',
+    secondaryImagePublicId: '',
+  })
+  const [aboutImages, setAboutImages] = useState({
+    primaryImage: null,
+    secondaryImage: null,
+  })
   const [editFormData, setEditFormData] = useState({
     title: '',
     category: '',
@@ -28,6 +40,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchMedia()
+    fetchAboutContent()
   }, [])
 
   const fetchMedia = async () => {
@@ -66,6 +79,83 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     localStorage.removeItem('token')
     router.push('/admin/login')
+  }
+
+  const fetchAboutContent = async () => {
+    try {
+      const res = await fetch('/api/about-content')
+      if (!res.ok) return
+      const data = await res.json()
+      setAboutContent({
+        body: data.body || '',
+        primaryImageUrl: data.primaryImageUrl || '',
+        primaryImagePublicId: data.primaryImagePublicId || '',
+        secondaryImageUrl: data.secondaryImageUrl || '',
+        secondaryImagePublicId: data.secondaryImagePublicId || '',
+      })
+    } catch (err) {
+      console.error('Error fetching about content:', err)
+    }
+  }
+
+  const handleAboutSave = async (e) => {
+    e.preventDefault()
+    setSavingAbout(true)
+
+    try {
+      const token = localStorage.getItem('token')
+      const data = new FormData()
+      data.append('body', aboutContent.body)
+      data.append('primaryImageUrl', aboutContent.primaryImageUrl)
+      data.append('primaryImagePublicId', aboutContent.primaryImagePublicId)
+      data.append('secondaryImageUrl', aboutContent.secondaryImageUrl)
+      data.append('secondaryImagePublicId', aboutContent.secondaryImagePublicId)
+
+      const compressAboutImage = async (file) => {
+        if (!file || file.size <= 4 * 1024 * 1024) return file
+
+        return imageCompression(file, {
+          maxSizeMB: 3.5,
+          maxWidthOrHeight: 2200,
+          useWebWorker: true,
+          fileType: file.type,
+        })
+      }
+
+      const primaryImage = await compressAboutImage(aboutImages.primaryImage)
+      const secondaryImage = await compressAboutImage(aboutImages.secondaryImage)
+
+      if (primaryImage) data.append('primaryImage', primaryImage)
+      if (secondaryImage) data.append('secondaryImage', secondaryImage)
+
+      const res = await fetch('/api/about-content', {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: data,
+      })
+
+      const result = await res.json()
+
+      if (!res.ok) {
+        throw new Error(result.error || 'Failed to update About page')
+      }
+
+      setAboutContent({
+        body: result.body || '',
+        primaryImageUrl: result.primaryImageUrl || '',
+        primaryImagePublicId: result.primaryImagePublicId || '',
+        secondaryImageUrl: result.secondaryImageUrl || '',
+        secondaryImagePublicId: result.secondaryImagePublicId || '',
+      })
+      setAboutImages({ primaryImage: null, secondaryImage: null })
+      alert('About page updated!')
+    } catch (err) {
+      alert(`Error: ${err.message || 'Failed to update About page'}`)
+    } finally {
+      setSavingAbout(false)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -319,6 +409,82 @@ export default function AdminDashboard() {
           </button>
         </div>
 
+        {/* About Page Editor */}
+        <div className="mb-12 p-6 border border-gray-300">
+          <h2 className="text-2xl font-light mb-2">About Page Content</h2>
+          <p className="mb-6 text-sm text-gray-500">
+            Update the About page paragraph and the two portrait images without touching code.
+          </p>
+          <form onSubmit={handleAboutSave} className="space-y-6">
+            <div>
+              <label htmlFor="about-body" className="mb-2 block text-sm font-medium text-black">
+                About Paragraph
+              </label>
+              <textarea
+                id="about-body"
+                value={aboutContent.body}
+                onChange={(e) => setAboutContent({ ...aboutContent, body: e.target.value })}
+                rows="9"
+                required
+                className="w-full resize-y px-4 py-3 border border-gray-300 bg-white text-black focus:outline-none focus:border-black"
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                Use a blank line to create a new paragraph on the public About page.
+              </p>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div>
+                <p className="mb-3 text-sm font-medium text-black">First About Image</p>
+                {aboutContent.primaryImageUrl && (
+                  <div className="relative mb-4 aspect-[4/5] max-w-xs border border-gray-200">
+                    <Image
+                      src={aboutContent.primaryImageUrl}
+                      alt="Current first About image"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setAboutImages({ ...aboutImages, primaryImage: e.target.files[0] || null })}
+                  className="w-full px-4 py-2 text-black file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
+                />
+              </div>
+
+              <div>
+                <p className="mb-3 text-sm font-medium text-black">Second About Image</p>
+                {aboutContent.secondaryImageUrl && (
+                  <div className="relative mb-4 aspect-[4/5] max-w-xs border border-gray-200">
+                    <Image
+                      src={aboutContent.secondaryImageUrl}
+                      alt="Current second About image"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setAboutImages({ ...aboutImages, secondaryImage: e.target.files[0] || null })}
+                  className="w-full px-4 py-2 text-black file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingAbout}
+              className="px-8 py-3 bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+            >
+              {savingAbout ? 'Saving...' : 'Save About Page'}
+            </button>
+          </form>
+        </div>
+
         {/* Upload Form */}
         <div className="mb-12 p-6 border border-gray-300">
           <h2 className="text-2xl font-light mb-6">Upload New Media</h2>
@@ -529,4 +695,3 @@ export default function AdminDashboard() {
     </main>
   )
 }
-
