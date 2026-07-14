@@ -9,6 +9,8 @@ export default function AdminDashboard() {
   const [media, setMedia] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadStatus, setUploadStatus] = useState('')
   const [savingAbout, setSavingAbout] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [aboutContent, setAboutContent] = useState({
@@ -158,9 +160,61 @@ export default function AdminDashboard() {
     }
   }
 
+  const uploadDirectToCloudinary = ({ file, params, resourceType }) => {
+    return new Promise((resolve, reject) => {
+      const uploadForm = new FormData()
+      uploadForm.append('file', file)
+      uploadForm.append('api_key', params.api_key)
+      uploadForm.append('timestamp', params.timestamp)
+      uploadForm.append('signature', params.signature)
+      uploadForm.append('folder', params.folder)
+
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', `https://api.cloudinary.com/v1_1/${params.cloud_name}/${resourceType}/upload`)
+      xhr.timeout = 30 * 60 * 1000
+
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return
+        const percent = Math.round((event.loaded / event.total) * 100)
+        setUploadProgress(percent)
+        setUploadStatus(`Uploading to Cloudinary... ${percent}%`)
+      }
+
+      xhr.onload = () => {
+        let response = null
+        try {
+          response = JSON.parse(xhr.responseText || '{}')
+        } catch (_) {}
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(response)
+          return
+        }
+
+        reject(new Error(response?.error?.message || `Cloudinary upload failed (${xhr.status})`))
+      }
+
+      xhr.onerror = () => {
+        reject(new Error('Could not reach Cloudinary. Check your connection, turn off VPN/ad blockers, then try again.'))
+      }
+
+      xhr.ontimeout = () => {
+        reject(new Error('Video upload timed out after 30 minutes. Try a smaller export or a stronger connection.'))
+      }
+
+      xhr.onabort = () => {
+        reject(new Error('Video upload was cancelled.'))
+      }
+
+      xhr.send(uploadForm)
+    })
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setUploading(true)
+    setUploadProgress(0)
+    setUploadStatus('')
 
     try {
       const token = localStorage.getItem('token')
@@ -177,6 +231,7 @@ export default function AdminDashboard() {
       // Video or any file > 4.5 MB: upload directly to Cloudinary (never send to our API)
       if (useDirectUpload && selectedFile) {
         const resourceType = isVideoFile ? 'video' : 'image'
+        setUploadStatus('Preparing secure upload...')
         const paramsRes = await fetch(`/api/cloudinary-upload-params?resource_type=${resourceType}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -185,43 +240,14 @@ export default function AdminDashboard() {
           throw new Error(err.error || 'Failed to get upload params')
         }
         const params = await paramsRes.json()
-        const uploadForm = new FormData()
-        uploadForm.append('file', selectedFile)
-        uploadForm.append('api_key', params.api_key)
-        uploadForm.append('timestamp', params.timestamp)
-        uploadForm.append('signature', params.signature)
-        uploadForm.append('folder', params.folder)
-        uploadForm.append('resource_type', params.resource_type)
-
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 10 * 60 * 1000)
-        let uploadRes
-        try {
-          uploadRes = await fetch(
-            `https://api.cloudinary.com/v1_1/${params.cloud_name}/${resourceType}/upload`,
-            { method: 'POST', body: uploadForm, signal: controller.signal }
-          )
-        } catch (err) {
-          clearTimeout(timeoutId)
-          if (err.name === 'AbortError') {
-            throw new Error('Video upload timed out. Try a smaller file or better connection.')
-          }
-          throw new Error(err.message || 'Network error during video upload.')
-        }
-        clearTimeout(timeoutId)
-
-        if (!uploadRes.ok) {
-          const text = await uploadRes.text()
-          let errMsg = `Cloudinary upload failed (${uploadRes.status})`
-          try {
-            const j = JSON.parse(text)
-            if (j.error?.message) errMsg = j.error.message
-          } catch (_) {}
-          throw new Error(errMsg)
-        }
-        const uploadResult = await uploadRes.json()
+        const uploadResult = await uploadDirectToCloudinary({
+          file: selectedFile,
+          params,
+          resourceType,
+        })
         cloudinaryUrl = uploadResult.secure_url
         cloudinaryPublicId = uploadResult.public_id
+        setUploadStatus('Saving media record...')
       }
 
       let res
@@ -277,6 +303,8 @@ export default function AdminDashboard() {
 
       if (res.ok) {
         alert('Upload successful!')
+        setUploadProgress(0)
+        setUploadStatus('')
         setFormData({
           title: '',
           category: '',
@@ -588,6 +616,19 @@ export default function AdminDashboard() {
             >
               {uploading ? (formData.type === 'video' ? 'Uploading video…' : 'Uploading...') : 'Upload'}
             </button>
+            {uploading && uploadStatus && (
+              <div className="max-w-xl">
+                <p className="mt-3 text-sm text-gray-600">{uploadStatus}</p>
+                {uploadProgress > 0 && (
+                  <div className="mt-2 h-2 overflow-hidden bg-gray-200">
+                    <div
+                      className="h-full bg-black transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </form>
         </div>
 
