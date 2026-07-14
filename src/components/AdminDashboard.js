@@ -9,7 +9,6 @@ export default function AdminDashboard() {
   const [media, setMedia] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadStatus, setUploadStatus] = useState('')
   const [savingAbout, setSavingAbout] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
@@ -173,12 +172,7 @@ export default function AdminDashboard() {
       xhr.open('POST', `https://api.cloudinary.com/v1_1/${params.cloud_name}/${resourceType}/upload`)
       xhr.timeout = 30 * 60 * 1000
 
-      xhr.upload.onprogress = (event) => {
-        if (!event.lengthComputable) return
-        const percent = Math.round((event.loaded / event.total) * 100)
-        setUploadProgress(percent)
-        setUploadStatus(`Uploading to Cloudinary... ${percent}%`)
-      }
+      setUploadStatus('Uploading to Cloudinary. Keep this tab open...')
 
       xhr.onload = () => {
         let response = null
@@ -213,7 +207,6 @@ export default function AdminDashboard() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setUploading(true)
-    setUploadProgress(0)
     setUploadStatus('')
 
     try {
@@ -303,7 +296,6 @@ export default function AdminDashboard() {
 
       if (res.ok) {
         alert('Upload successful!')
-        setUploadProgress(0)
         setUploadStatus('')
         setFormData({
           title: '',
@@ -619,14 +611,9 @@ export default function AdminDashboard() {
             {uploading && uploadStatus && (
               <div className="max-w-xl">
                 <p className="mt-3 text-sm text-gray-600">{uploadStatus}</p>
-                {uploadProgress > 0 && (
-                  <div className="mt-2 h-2 overflow-hidden bg-gray-200">
-                    <div
-                      className="h-full bg-black transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                )}
+                <div className="mt-2 h-2 overflow-hidden bg-gray-200">
+                  <div className="h-full w-1/2 animate-pulse bg-black" />
+                </div>
               </div>
             )}
           </form>
