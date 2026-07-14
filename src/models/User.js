@@ -2,6 +2,13 @@ import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
 
 const userSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    unique: true,
+    sparse: true,
+    lowercase: true,
+    trim: true,
+  },
   username: {
     type: String,
     required: true,
@@ -12,6 +19,14 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     minlength: 6,
+  },
+  passwordResetToken: {
+    type: String,
+    select: false,
+  },
+  passwordResetExpires: {
+    type: Date,
+    select: false,
   },
 }, {
   timestamps: true,
@@ -28,4 +43,3 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 }
 
 export default mongoose.models.User || mongoose.model('User', userSchema)
-
