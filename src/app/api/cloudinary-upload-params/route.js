@@ -56,3 +56,34 @@ export async function GET(request) {
     )
   }
 }
+
+export async function POST(request) {
+  try {
+    const auth = verifyToken(request)
+    if (!auth.valid) {
+      return NextResponse.json({ error: auth.error || 'Authentication required' }, { status: 401 })
+    }
+
+    const apiSecret = process.env.CLOUDINARY_API_SECRET
+    if (!apiSecret) {
+      return NextResponse.json(
+        { error: 'Cloudinary API secret is not set' },
+        { status: 500 }
+      )
+    }
+
+    const { paramsToSign } = await request.json()
+    if (!paramsToSign || typeof paramsToSign !== 'object') {
+      return NextResponse.json({ error: 'paramsToSign is required' }, { status: 400 })
+    }
+
+    const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret)
+    return NextResponse.json({ signature })
+  } catch (error) {
+    console.error('Cloudinary signature error:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to generate upload signature' },
+      { status: 500 }
+    )
+  }
+}

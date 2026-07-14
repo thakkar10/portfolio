@@ -204,6 +204,162 @@ export default function AdminDashboard() {
     })
   }
 
+  const loadCloudinaryWidget = () => {
+    return new Promise((resolve, reject) => {
+      if (window.cloudinary?.createUploadWidget) {
+        resolve()
+        return
+      }
+
+      const existingScript = document.querySelector('script[src="https://upload-widget.cloudinary.com/latest/global/all.js"]')
+      if (existingScript) {
+        existingScript.addEventListener('load', resolve, { once: true })
+        existingScript.addEventListener('error', reject, { once: true })
+        return
+      }
+
+      const script = document.createElement('script')
+      script.src = 'https://upload-widget.cloudinary.com/latest/global/all.js'
+      script.async = true
+      script.onload = resolve
+      script.onerror = () => reject(new Error('Could not load Cloudinary upload widget.'))
+      document.body.appendChild(script)
+    })
+  }
+
+  const handleVideoWidgetUpload = async () => {
+    if (!formData.title || !formData.category) {
+      alert('Add a title and category before uploading a video file.')
+      return
+    }
+
+    setUploading(true)
+    setUploadStatus('Opening Cloudinary video uploader...')
+
+    try {
+      const token = localStorage.getItem('token')
+      await loadCloudinaryWidget()
+
+      const paramsRes = await fetch('/api/cloudinary-upload-params?resource_type=video', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!paramsRes.ok) {
+        const err = await paramsRes.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to prepare Cloudinary uploader')
+      }
+
+      const params = await paramsRes.json()
+      let savedUpload = false
+
+      const widget = window.cloudinary.createUploadWidget(
+        {
+          cloudName: params.cloud_name,
+          apiKey: params.api_key,
+          folder: params.folder,
+          resourceType: 'video',
+          sources: ['local'],
+          multiple: false,
+          maxFiles: 1,
+          clientAllowedFormats: ['mp4', 'mov', 'webm', 'm4v'],
+          uploadSignature: async (callback, paramsToSign) => {
+            try {
+              const sigRes = await fetch('/api/cloudinary-upload-params', {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ paramsToSign }),
+              })
+              const sigData = await sigRes.json()
+              if (!sigRes.ok) throw new Error(sigData.error || 'Failed to sign upload')
+              callback(sigData.signature)
+            } catch (error) {
+              console.error('Cloudinary widget signature error:', error)
+              callback('')
+            }
+          },
+        },
+        async (error, result) => {
+          if (error) {
+            console.error('Cloudinary widget error:', error)
+            alert(`Video upload failed: ${error.message || error.statusText || 'Cloudinary uploader error'}`)
+            setUploading(false)
+            setUploadStatus('')
+            return
+          }
+
+          if (result?.event === 'queues-start') {
+            setUploadStatus('Uploading video to Cloudinary. Keep this tab open...')
+          }
+
+          if (result?.event === 'success' && !savedUpload) {
+            try {
+              savedUpload = true
+              setUploadStatus('Saving video to portfolio...')
+
+              const info = result.info || {}
+              const res = await fetch('/api/media/create', {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  title: formData.title,
+                  category: formData.category,
+                  type: 'video',
+                  cloudinaryUrl: info.secure_url,
+                  cloudinaryPublicId: info.public_id,
+                  youtubeUrl: formData.youtubeUrl || '',
+                  vimeoUrl: formData.vimeoUrl || '',
+                  featured: formData.featured,
+                }),
+              })
+
+              const createResult = await res.json()
+              if (!res.ok) {
+                throw new Error(createResult.error || 'Video uploaded, but could not save media record')
+              }
+
+              alert('Video uploaded successfully!')
+              setFormData({
+                title: '',
+                category: '',
+                type: 'image',
+                youtubeUrl: '',
+                vimeoUrl: '',
+                featured: false,
+              })
+              setSelectedFile(null)
+              setUploading(false)
+              setUploadStatus('')
+              fetchMedia()
+              widget.close()
+            } catch (saveError) {
+              console.error('Video save error:', saveError)
+              alert(`Video uploaded, but saving failed: ${saveError.message || 'Unknown error'}`)
+              setUploading(false)
+              setUploadStatus('')
+            }
+          }
+
+          if (result?.event === 'close' && !savedUpload) {
+            setUploading(false)
+            setUploadStatus('')
+          }
+        }
+      )
+
+      widget.open()
+    } catch (err) {
+      console.error('Video widget upload error:', err)
+      alert(`Error: ${err.message || 'Could not open video uploader'}`)
+      setUploading(false)
+      setUploadStatus('')
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setUploading(true)
@@ -220,6 +376,10 @@ export default function AdminDashboard() {
       )
       const isOverLimit = selectedFile && selectedFile.size > 4.5 * 1024 * 1024
       const useDirectUpload = isVideoFile || isOverLimit
+
+      if (formData.type === 'video' && !selectedFile && !formData.youtubeUrl && !formData.vimeoUrl) {
+        throw new Error('Use Upload Video File for video files, or add a YouTube/Vimeo URL before saving a video link.')
+      }
 
       // Video or any file > 4.5 MB: upload directly to Cloudinary (never send to our API)
       if (useDirectUpload && selectedFile) {
@@ -577,12 +737,17 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <div>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={(e) => setSelectedFile(e.target.files[0])}
-                    className="w-full px-4 py-2 text-black file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
-                  />
+                  <button
+                    type="button"
+                    onClick={handleVideoWidgetUpload}
+                    disabled={uploading || !formData.title || !formData.category}
+                    className="px-8 py-3 bg-black text-white hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Upload Video File
+                  </button>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Opens Cloudinary&apos;s uploader for video files. Add a title and category first.
+                  </p>
                 </div>
               </>
             )}
@@ -597,8 +762,7 @@ export default function AdminDashboard() {
             </div>
             {formData.type === 'video' && (
               <>
-                <p className="text-sm text-gray-500">Videos upload directly to Cloudinary (no size limit from our server). May take 1–2 min for large files.</p>
-                <p className="text-xs text-amber-600 mt-1">If you see &quot;Request Entity Too Large&quot;, use your main production URL (not a preview link) and hard-refresh (Cmd+Shift+R).</p>
+                <p className="text-sm text-gray-500">Use the Cloudinary uploader button for video files. The regular Upload button below is for saving YouTube or Vimeo links.</p>
               </>
             )}
             <button
@@ -606,7 +770,7 @@ export default function AdminDashboard() {
               disabled={uploading}
               className="px-8 py-3 bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
-              {uploading ? (formData.type === 'video' ? 'Uploading video…' : 'Uploading...') : 'Upload'}
+              {uploading ? (formData.type === 'video' ? 'Working…' : 'Uploading...') : formData.type === 'video' ? 'Save Video Link' : 'Upload'}
             </button>
             {uploading && uploadStatus && (
               <div className="max-w-xl">
