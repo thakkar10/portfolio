@@ -5,6 +5,30 @@ import { useState } from 'react'
 
 export default function ContactPage() {
   const [submitting, setSubmitting] = useState(false)
+  const [shareStatus, setShareStatus] = useState('')
+
+  const sharePortfolio = async () => {
+    const url = `${window.location.origin}/`
+    const shareData = {
+      title: 'Heet Thakkar Portfolio',
+      text: "Check out Heet's portfolio",
+      url,
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+        return
+      }
+
+      await navigator.clipboard.writeText(`${shareData.text}\n${url}`)
+      setShareStatus('Link copied')
+    } catch (error) {
+      if (error?.name !== 'AbortError') {
+        setShareStatus('Unable to share')
+      }
+    }
+  }
 
   return (
     <main 
@@ -33,6 +57,13 @@ export default function ContactPage() {
               send a concise brief and I will follow up with next steps.
             </p>
             <div className="mt-10 grid gap-4 text-sm text-white/58">
+              <button
+                type="button"
+                onClick={sharePortfolio}
+                className="border-b border-white/12 pb-4 text-left transition-colors hover:text-white"
+              >
+                Share Portfolio
+              </button>
               <a href="mailto:your@email.com" className="border-b border-white/12 pb-4 transition-colors hover:text-white">
                 Email
               </a>
@@ -45,6 +76,11 @@ export default function ContactPage() {
                 Instagram
               </a>
             </div>
+            {shareStatus && (
+              <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/42">
+                {shareStatus}
+              </p>
+            )}
           </motion.div>
 
           <motion.div

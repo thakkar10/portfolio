@@ -15,6 +15,7 @@ const layoutClasses = [
 
 export default function MasonryGrid({ items, initialSelectedId }) {
   const [selectedIndex, setSelectedIndex] = useState(null)
+  const [shareStatus, setShareStatus] = useState('')
   const openedInitialIdRef = useRef(null)
 
   const selectedImage = selectedIndex !== null ? items[selectedIndex] : null
@@ -53,6 +54,35 @@ export default function MasonryGrid({ items, initialSelectedId }) {
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [items.length, selectedImage])
+
+  useEffect(() => {
+    setShareStatus('')
+  }, [selectedImage])
+
+  const shareSelectedImage = async () => {
+    if (!selectedImage?._id) return
+
+    const url = `${window.location.origin}/photography?image=${encodeURIComponent(selectedImage._id)}`
+    const shareData = {
+      title: selectedImage.title ? `${selectedImage.title} | Heet Thakkar` : 'Heet Thakkar Portfolio',
+      text: "Check out Heet's portfolio",
+      url,
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+        return
+      }
+
+      await navigator.clipboard.writeText(`${shareData.text}\n${url}`)
+      setShareStatus('Link copied')
+    } catch (error) {
+      if (error?.name !== 'AbortError') {
+        setShareStatus('Unable to share')
+      }
+    }
+  }
 
   return (
     <>
@@ -124,19 +154,31 @@ export default function MasonryGrid({ items, initialSelectedId }) {
               className="absolute bottom-3 left-3 right-3 z-20 flex items-center gap-2 lg:hidden"
               onClick={(event) => event.stopPropagation()}
             >
+              {shareStatus && (
+                <p className="absolute bottom-full left-0 mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/54">
+                  {shareStatus}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => setSelectedIndex((current) => Math.max((current || 0) - 1, 0))}
                 disabled={selectedIndex === 0}
-                className="min-h-[46px] flex-1 border border-white/18 bg-black/72 px-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/78 backdrop-blur-md transition-colors hover:border-white/42 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                className="min-h-[46px] flex-1 border border-white/18 bg-black/72 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/78 backdrop-blur-md transition-colors hover:border-white/42 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
               >
                 Prev
               </button>
               <button
                 type="button"
+                onClick={shareSelectedImage}
+                className="min-h-[46px] flex-1 border border-white/18 bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-black backdrop-blur-md transition-transform hover:scale-[1.01]"
+              >
+                Share
+              </button>
+              <button
+                type="button"
                 onClick={() => setSelectedIndex((current) => Math.min((current || 0) + 1, items.length - 1))}
                 disabled={selectedIndex === items.length - 1}
-                className="min-h-[46px] flex-1 border border-white/18 bg-black/72 px-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/78 backdrop-blur-md transition-colors hover:border-white/42 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                className="min-h-[46px] flex-1 border border-white/18 bg-black/72 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/78 backdrop-blur-md transition-colors hover:border-white/42 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
               >
                 Next
               </button>
@@ -171,6 +213,11 @@ export default function MasonryGrid({ items, initialSelectedId }) {
                     {selectedImage.caption}
                   </p>
                 )}
+                {shareStatus && (
+                  <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/42">
+                    {shareStatus}
+                  </p>
+                )}
                 <div className="mt-8 flex items-center gap-3">
                   <button
                     type="button"
@@ -187,6 +234,13 @@ export default function MasonryGrid({ items, initialSelectedId }) {
                     className="min-h-[42px] border border-white/14 px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70 transition-colors hover:border-white/42 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
                   >
                     Next
+                  </button>
+                  <button
+                    type="button"
+                    onClick={shareSelectedImage}
+                    className="min-h-[42px] border border-white/14 px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70 transition-colors hover:border-white/42 hover:text-white"
+                  >
+                    Share
                   </button>
                   <button
                     type="button"
