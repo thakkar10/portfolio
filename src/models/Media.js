@@ -23,6 +23,18 @@ const mediaSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  bunnyLibraryId: {
+    type: String,
+    trim: true,
+  },
+  bunnyVideoId: {
+    type: String,
+    trim: true,
+  },
+  bunnyEmbedUrl: {
+    type: String,
+    trim: true,
+  },
   youtubeUrl: {
     type: String,
     trim: true,
@@ -62,4 +74,3 @@ const mediaSchema = new mongoose.Schema({
 mediaSchema.index({ title: 'text', category: 'text', tags: 'text' })
 
 export default mongoose.models.Media || mongoose.model('Media', mediaSchema)
-

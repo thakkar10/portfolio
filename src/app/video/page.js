@@ -5,6 +5,10 @@ import { motion } from 'framer-motion'
 import { useSearchParams } from 'next/navigation'
 
 function videoEmbedUrl(video) {
+  if (video.bunnyEmbedUrl) return video.bunnyEmbedUrl
+  if (video.bunnyLibraryId && video.bunnyVideoId) {
+    return `https://iframe.mediadelivery.net/embed/${video.bunnyLibraryId}/${video.bunnyVideoId}`
+  }
   if (video.youtubeUrl) return video.youtubeUrl.replace('watch?v=', 'embed/')
   if (video.vimeoUrl) return video.vimeoUrl.replace('vimeo.com/', 'player.vimeo.com/video/')
   return ''
@@ -72,7 +76,7 @@ function VideoContent() {
               className="premium-surface grid overflow-hidden lg:grid-cols-[1fr_360px]"
             >
               <div className="relative aspect-video bg-white/[0.03]">
-                {video.youtubeUrl || video.vimeoUrl ? (
+                {video.bunnyEmbedUrl || video.bunnyVideoId || video.youtubeUrl || video.vimeoUrl ? (
                   <iframe
                     src={videoEmbedUrl(video)}
                     title={video.title}

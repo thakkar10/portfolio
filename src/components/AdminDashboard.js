@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import imageCompression from 'browser-image-compression'
+import * as tus from 'tus-js-client'
 
 export default function AdminDashboard() {
   const [media, setMedia] = useState([])
@@ -204,6 +205,33 @@ export default function AdminDashboard() {
     })
   }
 
+  const uploadDirectToBunny = ({ file, upload }) => {
+    return new Promise((resolve, reject) => {
+      const uploader = new tus.Upload(file, {
+        endpoint: upload.endpoint,
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        headers: upload.headers,
+        metadata: {
+          filetype: file.type || 'video/mp4',
+          title: formData.title || file.name || 'Portfolio video',
+        },
+        onError: (error) => {
+          reject(error)
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          if (!bytesTotal) return
+          const percent = Math.round((bytesUploaded / bytesTotal) * 100)
+          setUploadStatus(`Uploading video to Bunny Stream... ${percent}%`)
+        },
+        onSuccess: () => {
+          resolve()
+        },
+      })
+
+      uploader.start()
+    })
+  }
+
   const loadCloudinaryWidget = () => {
     return new Promise((resolve, reject) => {
       if (window.cloudinary?.createUploadWidget) {
@@ -232,129 +260,71 @@ export default function AdminDashboard() {
       alert('Add a title and category before uploading a video file.')
       return
     }
+    if (!selectedFile) {
+      alert('Choose a video file first.')
+      return
+    }
 
     setUploading(true)
-    setUploadStatus('Opening Cloudinary video uploader...')
+    setUploadStatus('Preparing Bunny Stream upload...')
 
     try {
       const token = localStorage.getItem('token')
-      await loadCloudinaryWidget()
-
-      const paramsRes = await fetch('/api/cloudinary-upload-params?resource_type=video', {
-        headers: { Authorization: `Bearer ${token}` },
+      const prepareRes = await fetch('/api/bunny-stream/prepare-upload', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: formData.title }),
       })
-      if (!paramsRes.ok) {
-        const err = await paramsRes.json().catch(() => ({}))
-        throw new Error(err.error || 'Failed to prepare Cloudinary uploader')
+      const prepared = await prepareRes.json()
+      if (!prepareRes.ok) {
+        throw new Error(prepared.error || 'Failed to prepare Bunny Stream upload')
       }
 
-      const params = await paramsRes.json()
-      let savedUpload = false
+      await uploadDirectToBunny({ file: selectedFile, upload: prepared.upload })
+      setUploadStatus('Saving video to portfolio...')
 
-      const widget = window.cloudinary.createUploadWidget(
-        {
-          cloudName: params.cloud_name,
-          apiKey: params.api_key,
-          folder: params.folder,
-          resourceType: 'video',
-          sources: ['local'],
-          multiple: false,
-          maxFiles: 1,
-          clientAllowedFormats: ['mp4', 'mov', 'webm', 'm4v'],
-          uploadSignature: async (callback, paramsToSign) => {
-            try {
-              const sigRes = await fetch('/api/cloudinary-upload-params', {
-                method: 'POST',
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ paramsToSign }),
-              })
-              const sigData = await sigRes.json()
-              if (!sigRes.ok) throw new Error(sigData.error || 'Failed to sign upload')
-              callback(sigData.signature)
-            } catch (error) {
-              console.error('Cloudinary widget signature error:', error)
-              callback('')
-            }
-          },
+      const res = await fetch('/api/media/create', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        async (error, result) => {
-          if (error) {
-            console.error('Cloudinary widget error:', error)
-            alert(`Video upload failed: ${error.message || error.statusText || 'Cloudinary uploader error'}`)
-            setUploading(false)
-            setUploadStatus('')
-            return
-          }
+        body: JSON.stringify({
+          title: formData.title,
+          category: formData.category,
+          type: 'video',
+          bunnyLibraryId: prepared.libraryId,
+          bunnyVideoId: prepared.videoId,
+          bunnyEmbedUrl: prepared.embedUrl,
+          youtubeUrl: formData.youtubeUrl || '',
+          vimeoUrl: formData.vimeoUrl || '',
+          featured: formData.featured,
+        }),
+      })
 
-          if (result?.event === 'queues-start') {
-            setUploadStatus('Uploading video to Cloudinary. Keep this tab open...')
-          }
+      const createResult = await res.json()
+      if (!res.ok) {
+        throw new Error(createResult.error || 'Video uploaded, but could not save media record')
+      }
 
-          if (result?.event === 'success' && !savedUpload) {
-            try {
-              savedUpload = true
-              setUploadStatus('Saving video to portfolio...')
-
-              const info = result.info || {}
-              const res = await fetch('/api/media/create', {
-                method: 'POST',
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  title: formData.title,
-                  category: formData.category,
-                  type: 'video',
-                  cloudinaryUrl: info.secure_url,
-                  cloudinaryPublicId: info.public_id,
-                  youtubeUrl: formData.youtubeUrl || '',
-                  vimeoUrl: formData.vimeoUrl || '',
-                  featured: formData.featured,
-                }),
-              })
-
-              const createResult = await res.json()
-              if (!res.ok) {
-                throw new Error(createResult.error || 'Video uploaded, but could not save media record')
-              }
-
-              alert('Video uploaded successfully!')
-              setFormData({
-                title: '',
-                category: '',
-                type: 'image',
-                youtubeUrl: '',
-                vimeoUrl: '',
-                featured: false,
-              })
-              setSelectedFile(null)
-              setUploading(false)
-              setUploadStatus('')
-              fetchMedia()
-              widget.close()
-            } catch (saveError) {
-              console.error('Video save error:', saveError)
-              alert(`Video uploaded, but saving failed: ${saveError.message || 'Unknown error'}`)
-              setUploading(false)
-              setUploadStatus('')
-            }
-          }
-
-          if (result?.event === 'close' && !savedUpload) {
-            setUploading(false)
-            setUploadStatus('')
-          }
-        }
-      )
-
-      widget.open()
+      alert('Video uploaded successfully!')
+      setFormData({
+        title: '',
+        category: '',
+        type: 'image',
+        youtubeUrl: '',
+        vimeoUrl: '',
+        featured: false,
+      })
+      setSelectedFile(null)
+      fetchMedia()
     } catch (err) {
-      console.error('Video widget upload error:', err)
-      alert(`Error: ${err.message || 'Could not open video uploader'}`)
+      console.error('Bunny video upload error:', err)
+      alert(`Error: ${err.message || 'Could not upload video to Bunny Stream'}`)
+    } finally {
       setUploading(false)
       setUploadStatus('')
     }
@@ -377,8 +347,11 @@ export default function AdminDashboard() {
       const isOverLimit = selectedFile && selectedFile.size > 4.5 * 1024 * 1024
       const useDirectUpload = isVideoFile || isOverLimit
 
-      if (formData.type === 'video' && !selectedFile && !formData.youtubeUrl && !formData.vimeoUrl) {
-        throw new Error('Use Upload Video File for video files, or add a YouTube/Vimeo URL before saving a video link.')
+      if (formData.type === 'video' && selectedFile) {
+        throw new Error('Use the Upload Video File button for Bunny Stream video uploads.')
+      }
+      if (formData.type === 'video' && !formData.youtubeUrl && !formData.vimeoUrl) {
+        throw new Error('Add a YouTube/Vimeo URL, or choose a video file and use Upload Video File.')
       }
 
       // Video or any file > 4.5 MB: upload directly to Cloudinary (never send to our API)
@@ -737,16 +710,22 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <div>
+                  <input
+                    type="file"
+                    accept="video/mp4,video/quicktime,video/webm,video/x-m4v,video/*"
+                    onChange={(e) => setSelectedFile(e.target.files[0] || null)}
+                    className="mb-3 w-full px-4 py-2 text-black file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
+                  />
                   <button
                     type="button"
                     onClick={handleVideoWidgetUpload}
-                    disabled={uploading || !formData.title || !formData.category}
+                    disabled={uploading || !formData.title || !formData.category || !selectedFile}
                     className="px-8 py-3 bg-black text-white hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Upload Video File
                   </button>
                   <p className="mt-2 text-sm text-gray-500">
-                    Opens Cloudinary&apos;s uploader for video files. Add a title and category first.
+                    Uploads large video files to Bunny Stream. Photos still use Cloudinary.
                   </p>
                 </div>
               </>
@@ -762,7 +741,7 @@ export default function AdminDashboard() {
             </div>
             {formData.type === 'video' && (
               <>
-                <p className="text-sm text-gray-500">Use the Cloudinary uploader button for video files. The regular Upload button below is for saving YouTube or Vimeo links.</p>
+                <p className="text-sm text-gray-500">Use the Bunny Stream upload button for video files. The regular button below is only for saving YouTube or Vimeo links.</p>
               </>
             )}
             <button
@@ -793,11 +772,32 @@ export default function AdminDashboard() {
               <div key={item._id} className="border border-gray-300 p-4">
                 {item.cloudinaryUrl && (
                   <div className="relative aspect-square mb-4">
-                    <Image
-                      src={item.cloudinaryUrl}
-                      alt={item.title || 'Media'}
-                      fill
-                      className="object-cover"
+                    {item.type === 'video' ? (
+                      <video
+                        src={item.cloudinaryUrl}
+                        className="h-full w-full object-cover"
+                        muted
+                        playsInline
+                        controls
+                      />
+                    ) : (
+                      <Image
+                        src={item.cloudinaryUrl}
+                        alt={item.title || 'Media'}
+                        fill
+                        className="object-cover"
+                      />
+                    )}
+                  </div>
+                )}
+                {!item.cloudinaryUrl && item.bunnyEmbedUrl && (
+                  <div className="relative mb-4 aspect-video overflow-hidden border border-gray-200 bg-black">
+                    <iframe
+                      src={item.bunnyEmbedUrl}
+                      title={item.title || 'Bunny Stream video'}
+                      className="h-full w-full"
+                      allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                      allowFullScreen
                     />
                   </div>
                 )}

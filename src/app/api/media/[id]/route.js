@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb'
 import Media from '@/models/Media'
 import { verifyToken } from '@/middleware/auth'
 import cloudinary from '@/lib/cloudinary'
+import { deleteBunnyVideo } from '@/lib/bunnyStream'
 
 // Mark as dynamic to prevent build-time evaluation
 export const dynamic = 'force-dynamic'
@@ -75,6 +76,17 @@ export async function DELETE(request, { params }) {
       }
     }
 
+    if (media.bunnyVideoId && media.bunnyLibraryId) {
+      try {
+        await deleteBunnyVideo({
+          libraryId: media.bunnyLibraryId,
+          videoId: media.bunnyVideoId,
+        })
+      } catch (error) {
+        console.error('Bunny Stream delete error:', error)
+      }
+    }
+
     await Media.findByIdAndDelete(id)
     return NextResponse.json({ success: true })
   } catch (error) {
@@ -84,4 +96,3 @@ export async function DELETE(request, { params }) {
     )
   }
 }
-
