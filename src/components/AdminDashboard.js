@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import imageCompression from 'browser-image-compression'
@@ -40,12 +40,45 @@ export default function AdminDashboard() {
   })
   const [selectedFile, setSelectedFile] = useState(null)
   const [selectedThumbnailFile, setSelectedThumbnailFile] = useState(null)
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState('')
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState('')
+  const [videoDuration, setVideoDuration] = useState(0)
+  const [videoFrameTime, setVideoFrameTime] = useState(0)
+  const videoPreviewRef = useRef(null)
   const router = useRouter()
 
   useEffect(() => {
     fetchMedia()
     fetchAboutContent()
   }, [])
+
+  useEffect(() => {
+    if (!selectedFile || formData.type !== 'video') {
+      setVideoPreviewUrl('')
+      setVideoDuration(0)
+      setVideoFrameTime(0)
+      return
+    }
+
+    const url = URL.createObjectURL(selectedFile)
+    setVideoPreviewUrl(url)
+    setVideoDuration(0)
+    setVideoFrameTime(0)
+
+    return () => URL.revokeObjectURL(url)
+  }, [selectedFile, formData.type])
+
+  useEffect(() => {
+    if (!selectedThumbnailFile) {
+      setThumbnailPreviewUrl('')
+      return
+    }
+
+    const url = URL.createObjectURL(selectedThumbnailFile)
+    setThumbnailPreviewUrl(url)
+
+    return () => URL.revokeObjectURL(url)
+  }, [selectedThumbnailFile])
 
   const fetchMedia = async () => {
     try {
@@ -267,6 +300,48 @@ export default function AdminDashboard() {
       thumbnailUrl: result.secure_url || '',
       thumbnailPublicId: result.public_id || '',
     }
+  }
+
+  const handleVideoFileChange = (file) => {
+    setSelectedFile(file || null)
+    setSelectedThumbnailFile(null)
+  }
+
+  const handleVideoSeek = (value) => {
+    const nextTime = Number(value)
+    setVideoFrameTime(nextTime)
+    if (videoPreviewRef.current) {
+      videoPreviewRef.current.currentTime = nextTime
+    }
+  }
+
+  const captureCurrentVideoFrame = async () => {
+    const video = videoPreviewRef.current
+    if (!video || !selectedFile) return
+
+    if (!video.videoWidth || !video.videoHeight) {
+      alert('Let the video preview load first, then choose a thumbnail frame.')
+      return
+    }
+
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const context = canvas.getContext('2d')
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    const blob = await new Promise((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', 0.9)
+    })
+
+    if (!blob) {
+      alert('Could not capture that frame. Try another frame or upload a thumbnail image.')
+      return
+    }
+
+    const baseName = (selectedFile.name || 'video').replace(/\.[^/.]+$/, '')
+    const thumbnailFile = new File([blob], `${baseName}-thumbnail.jpg`, { type: 'image/jpeg' })
+    setSelectedThumbnailFile(thumbnailFile)
   }
 
   const loadCloudinaryWidget = () => {
@@ -759,9 +834,68 @@ export default function AdminDashboard() {
                   <input
                     type="file"
                     accept="video/mp4,video/quicktime,video/webm,video/x-m4v,video/*"
-                    onChange={(e) => setSelectedFile(e.target.files[0] || null)}
+                    onChange={(e) => handleVideoFileChange(e.target.files[0] || null)}
                     className="mb-3 w-full px-4 py-2 text-black file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
                   />
+                  {videoPreviewUrl && (
+                    <div className="mb-4 border border-gray-200 bg-gray-50 p-4">
+                      <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+                        <div>
+                          <video
+                            ref={videoPreviewRef}
+                            src={videoPreviewUrl}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            className="aspect-video w-full bg-black object-contain"
+                            onLoadedMetadata={(e) => {
+                              setVideoDuration(e.currentTarget.duration || 0)
+                              setVideoFrameTime(e.currentTarget.currentTime || 0)
+                            }}
+                            onTimeUpdate={(e) => setVideoFrameTime(e.currentTarget.currentTime || 0)}
+                          />
+                          <div className="mt-3 flex items-center gap-3">
+                            <input
+                              type="range"
+                              min="0"
+                              max={videoDuration || 0}
+                              step="0.05"
+                              value={Math.min(videoFrameTime, videoDuration || 0)}
+                              onChange={(e) => handleVideoSeek(e.target.value)}
+                              className="w-full"
+                              disabled={!videoDuration}
+                            />
+                            <span className="w-20 text-right text-xs text-gray-500">
+                              {videoFrameTime.toFixed(1)}s
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={captureCurrentVideoFrame}
+                            className="mt-3 px-5 py-2 bg-gray-900 text-sm text-white hover:bg-gray-700 transition-colors"
+                          >
+                            Use Current Frame as Thumbnail
+                          </button>
+                        </div>
+                        <div>
+                          <p className="mb-2 text-sm font-medium text-black">Selected Thumbnail</p>
+                          <div className="relative aspect-video overflow-hidden border border-gray-300 bg-white">
+                            {thumbnailPreviewUrl ? (
+                              <img
+                                src={thumbnailPreviewUrl}
+                                alt="Selected video thumbnail preview"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center px-4 text-center text-xs uppercase tracking-[0.18em] text-gray-400">
+                                No thumbnail selected
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={handleVideoWidgetUpload}
