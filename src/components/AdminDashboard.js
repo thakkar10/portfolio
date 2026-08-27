@@ -30,6 +30,12 @@ export default function AdminDashboard() {
     featured: false,
   })
   const [editThumbnailFile, setEditThumbnailFile] = useState(null)
+  const [editFrameVideoFile, setEditFrameVideoFile] = useState(null)
+  const [editFrameVideoPreviewUrl, setEditFrameVideoPreviewUrl] = useState('')
+  const [editThumbnailPreviewUrl, setEditThumbnailPreviewUrl] = useState('')
+  const [editVideoDuration, setEditVideoDuration] = useState(0)
+  const [editVideoFrameTime, setEditVideoFrameTime] = useState(0)
+  const editVideoPreviewRef = useRef(null)
   const [formData, setFormData] = useState({
     title: '',
     category: '',
@@ -79,6 +85,34 @@ export default function AdminDashboard() {
 
     return () => URL.revokeObjectURL(url)
   }, [selectedThumbnailFile])
+
+  useEffect(() => {
+    if (!editFrameVideoFile) {
+      setEditFrameVideoPreviewUrl('')
+      setEditVideoDuration(0)
+      setEditVideoFrameTime(0)
+      return
+    }
+
+    const url = URL.createObjectURL(editFrameVideoFile)
+    setEditFrameVideoPreviewUrl(url)
+    setEditVideoDuration(0)
+    setEditVideoFrameTime(0)
+
+    return () => URL.revokeObjectURL(url)
+  }, [editFrameVideoFile])
+
+  useEffect(() => {
+    if (!editThumbnailFile) {
+      setEditThumbnailPreviewUrl('')
+      return
+    }
+
+    const url = URL.createObjectURL(editThumbnailFile)
+    setEditThumbnailPreviewUrl(url)
+
+    return () => URL.revokeObjectURL(url)
+  }, [editThumbnailFile])
 
   const fetchMedia = async () => {
     try {
@@ -307,21 +341,12 @@ export default function AdminDashboard() {
     setSelectedThumbnailFile(null)
   }
 
-  const handleVideoSeek = (value) => {
-    const nextTime = Number(value)
-    setVideoFrameTime(nextTime)
-    if (videoPreviewRef.current) {
-      videoPreviewRef.current.currentTime = nextTime
-    }
-  }
-
-  const captureCurrentVideoFrame = async () => {
-    const video = videoPreviewRef.current
-    if (!video || !selectedFile) return
+  const makeThumbnailFileFromVideo = async (video, sourceFile) => {
+    if (!video || !sourceFile) return null
 
     if (!video.videoWidth || !video.videoHeight) {
       alert('Let the video preview load first, then choose a thumbnail frame.')
-      return
+      return null
     }
 
     const canvas = document.createElement('canvas')
@@ -336,12 +361,39 @@ export default function AdminDashboard() {
 
     if (!blob) {
       alert('Could not capture that frame. Try another frame or upload a thumbnail image.')
-      return
+      return null
     }
 
-    const baseName = (selectedFile.name || 'video').replace(/\.[^/.]+$/, '')
-    const thumbnailFile = new File([blob], `${baseName}-thumbnail.jpg`, { type: 'image/jpeg' })
+    const baseName = (sourceFile.name || 'video').replace(/\.[^/.]+$/, '')
+    return new File([blob], `${baseName}-thumbnail.jpg`, { type: 'image/jpeg' })
+  }
+
+  const handleVideoSeek = (value) => {
+    const nextTime = Number(value)
+    setVideoFrameTime(nextTime)
+    if (videoPreviewRef.current) {
+      videoPreviewRef.current.currentTime = nextTime
+    }
+  }
+
+  const captureCurrentVideoFrame = async () => {
+    const thumbnailFile = await makeThumbnailFileFromVideo(videoPreviewRef.current, selectedFile)
+    if (!thumbnailFile) return
     setSelectedThumbnailFile(thumbnailFile)
+  }
+
+  const handleEditVideoSeek = (value) => {
+    const nextTime = Number(value)
+    setEditVideoFrameTime(nextTime)
+    if (editVideoPreviewRef.current) {
+      editVideoPreviewRef.current.currentTime = nextTime
+    }
+  }
+
+  const captureEditVideoFrame = async () => {
+    const thumbnailFile = await makeThumbnailFileFromVideo(editVideoPreviewRef.current, editFrameVideoFile)
+    if (!thumbnailFile) return
+    setEditThumbnailFile(thumbnailFile)
   }
 
   const loadCloudinaryWidget = () => {
@@ -611,6 +663,7 @@ export default function AdminDashboard() {
       featured: item.featured || false,
     })
     setEditThumbnailFile(null)
+    setEditFrameVideoFile(null)
   }
 
   const handleCancelEdit = () => {
@@ -621,6 +674,7 @@ export default function AdminDashboard() {
       featured: false,
     })
     setEditThumbnailFile(null)
+    setEditFrameVideoFile(null)
   }
 
   const handleSaveEdit = async (id) => {
@@ -644,6 +698,7 @@ export default function AdminDashboard() {
         alert('Updated successfully!')
         setEditingItem(null)
         setEditThumbnailFile(null)
+        setEditFrameVideoFile(null)
         fetchMedia()
       } else {
         const errorData = await res.json()
@@ -1038,14 +1093,89 @@ export default function AdminDashboard() {
                       </select>
                     </div>
                     {item.type === 'video' && (
-                      <div>
-                        <label className="mb-2 block text-sm text-black">Replace Video Thumbnail</label>
+                      <div className="space-y-4 border border-gray-200 bg-gray-50 p-4">
+                        <div>
+                          <label className="mb-2 block text-sm font-medium text-black">
+                            Pick Thumbnail From Clip
+                          </label>
+                          <input
+                            type="file"
+                            accept="video/mp4,video/quicktime,video/webm,video/x-m4v,video/*"
+                            onChange={(e) => {
+                              setEditFrameVideoFile(e.target.files[0] || null)
+                              setEditThumbnailFile(null)
+                            }}
+                            className="w-full px-3 py-2 text-black file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
+                          />
+                          <p className="mt-2 text-xs leading-5 text-gray-500">
+                            Choose the original clip to grab a new thumbnail frame. This does not replace the uploaded video.
+                          </p>
+                        </div>
+
+                        {editFrameVideoPreviewUrl && (
+                          <div>
+                            <video
+                              ref={editVideoPreviewRef}
+                              src={editFrameVideoPreviewUrl}
+                              controls
+                              playsInline
+                              preload="metadata"
+                              className="aspect-video w-full bg-black object-contain"
+                              onLoadedMetadata={(e) => {
+                                setEditVideoDuration(e.currentTarget.duration || 0)
+                                setEditVideoFrameTime(e.currentTarget.currentTime || 0)
+                              }}
+                              onTimeUpdate={(e) => setEditVideoFrameTime(e.currentTarget.currentTime || 0)}
+                            />
+                            <div className="mt-3 flex items-center gap-3">
+                              <input
+                                type="range"
+                                min="0"
+                                max={editVideoDuration || 0}
+                                step="0.05"
+                                value={Math.min(editVideoFrameTime, editVideoDuration || 0)}
+                                onChange={(e) => handleEditVideoSeek(e.target.value)}
+                                className="w-full"
+                                disabled={!editVideoDuration}
+                              />
+                              <span className="w-16 text-right text-xs text-gray-500">
+                                {editVideoFrameTime.toFixed(1)}s
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={captureEditVideoFrame}
+                              className="mt-3 px-4 py-2 bg-gray-900 text-xs text-white hover:bg-gray-700 transition-colors"
+                            >
+                              Use Current Frame
+                            </button>
+                          </div>
+                        )}
+
+                        {(editThumbnailPreviewUrl || item.thumbnailUrl) && (
+                          <div>
+                            <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-gray-500">
+                              Thumbnail Preview
+                            </p>
+                            <div className="relative aspect-video overflow-hidden border border-gray-300 bg-white">
+                              <img
+                                src={editThumbnailPreviewUrl || item.thumbnailUrl}
+                                alt={`${item.title || 'Video'} thumbnail preview`}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="mb-2 block text-sm text-black">Or Upload Thumbnail Image</label>
                         <input
                           type="file"
                           accept="image/*"
                           onChange={(e) => setEditThumbnailFile(e.target.files[0] || null)}
                           className="w-full px-3 py-2 text-black file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
                         />
+                        </div>
                       </div>
                     )}
                     <div className="flex items-center gap-2">

@@ -16,7 +16,7 @@ function videoEmbedUrl(video) {
 
 function VideoContent() {
   const [videos, setVideos] = useState([])
-  const [activeVideoIds, setActiveVideoIds] = useState({})
+  const [activeVideoId, setActiveVideoId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const searchParams = useSearchParams()
@@ -77,25 +77,35 @@ function VideoContent() {
               className="premium-surface grid overflow-hidden lg:grid-cols-[1fr_360px]"
             >
               <div className="relative aspect-video bg-white/[0.03]">
-                {(video.bunnyEmbedUrl || video.bunnyVideoId || video.youtubeUrl || video.vimeoUrl) && video.thumbnailUrl && !activeVideoIds[video._id] ? (
+                {activeVideoId !== video._id ? (
                   <button
                     type="button"
-                    onClick={() => setActiveVideoIds((current) => ({ ...current, [video._id]: true }))}
-                    className="group relative h-full w-full overflow-hidden text-left"
+                    onClick={() => setActiveVideoId(video._id)}
+                    className="group relative flex h-full w-full items-center justify-center overflow-hidden bg-black text-left"
                     aria-label={`Play ${video.title || 'video'}`}
                   >
-                    <img
-                      src={video.thumbnailUrl}
-                      alt={`${video.title || 'Video'} thumbnail`}
-                      className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
-                    />
-                    <span className="absolute inset-0 bg-black/20 transition duration-500 group-hover:bg-black/10" />
+                    {video.thumbnailUrl ? (
+                      <img
+                        src={video.thumbnailUrl}
+                        alt={`${video.title || 'Video'} thumbnail`}
+                        className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <span className="absolute inset-0 bg-black" />
+                    )}
+                    <span className="absolute inset-0 bg-black/25 transition duration-500 group-hover:bg-black/15" />
+                    {!video.thumbnailUrl && (
+                      <span className="relative z-10 text-[11px] font-semibold uppercase tracking-[0.28em] text-white/38">
+                        Play Video
+                      </span>
+                    )}
                     <span className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-black shadow-2xl transition duration-300 group-hover:scale-105">
                       <span className="ml-1 h-0 w-0 border-y-[10px] border-l-[16px] border-y-transparent border-l-black" />
                     </span>
                   </button>
                 ) : video.bunnyEmbedUrl || video.bunnyVideoId || video.youtubeUrl || video.vimeoUrl ? (
                   <iframe
+                    key={video._id}
                     src={videoEmbedUrl(video)}
                     title={video.title}
                     className="h-full w-full"
@@ -104,9 +114,11 @@ function VideoContent() {
                   />
                 ) : video.cloudinaryUrl ? (
                   <video
+                    key={video._id}
                     src={video.cloudinaryUrl}
                     poster={video.thumbnailUrl || undefined}
                     controls
+                    autoPlay
                     className="h-full w-full object-cover"
                   >
                     Your browser does not support the video tag.
