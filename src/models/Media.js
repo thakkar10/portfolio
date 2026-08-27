@@ -35,6 +35,14 @@ const mediaSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  thumbnailUrl: {
+    type: String,
+    trim: true,
+  },
+  thumbnailPublicId: {
+    type: String,
+    trim: true,
+  },
   youtubeUrl: {
     type: String,
     trim: true,

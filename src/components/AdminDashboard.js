@@ -29,6 +29,7 @@ export default function AdminDashboard() {
     category: '',
     featured: false,
   })
+  const [editThumbnailFile, setEditThumbnailFile] = useState(null)
   const [formData, setFormData] = useState({
     title: '',
     category: '',
@@ -38,6 +39,7 @@ export default function AdminDashboard() {
     featured: false,
   })
   const [selectedFile, setSelectedFile] = useState(null)
+  const [selectedThumbnailFile, setSelectedThumbnailFile] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -232,6 +234,41 @@ export default function AdminDashboard() {
     })
   }
 
+  const uploadThumbnailToCloudinary = async (file, token) => {
+    if (!file) return { thumbnailUrl: '', thumbnailPublicId: '' }
+
+    let fileToUpload = file
+    if (file.size > 4 * 1024 * 1024) {
+      fileToUpload = await imageCompression(file, {
+        maxSizeMB: 3.5,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+        fileType: file.type,
+      })
+    }
+
+    setUploadStatus('Uploading thumbnail...')
+    const paramsRes = await fetch('/api/cloudinary-upload-params?resource_type=image&folder=portfolio-thumbnails', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!paramsRes.ok) {
+      const err = await paramsRes.json().catch(() => ({}))
+      throw new Error(err.error || 'Failed to get thumbnail upload params')
+    }
+
+    const params = await paramsRes.json()
+    const result = await uploadDirectToCloudinary({
+      file: fileToUpload,
+      params,
+      resourceType: 'image',
+    })
+
+    return {
+      thumbnailUrl: result.secure_url || '',
+      thumbnailPublicId: result.public_id || '',
+    }
+  }
+
   const loadCloudinaryWidget = () => {
     return new Promise((resolve, reject) => {
       if (window.cloudinary?.createUploadWidget) {
@@ -256,8 +293,8 @@ export default function AdminDashboard() {
   }
 
   const handleVideoWidgetUpload = async () => {
-    if (!formData.title || !formData.category) {
-      alert('Add a title and category before uploading a video file.')
+    if (!formData.title) {
+      alert('Add a title before uploading a video file.')
       return
     }
     if (!selectedFile) {
@@ -284,6 +321,7 @@ export default function AdminDashboard() {
       }
 
       await uploadDirectToBunny({ file: selectedFile, upload: prepared.upload })
+      const thumbnail = await uploadThumbnailToCloudinary(selectedThumbnailFile, token)
       setUploadStatus('Saving video to portfolio...')
 
       const res = await fetch('/api/media/create', {
@@ -299,6 +337,8 @@ export default function AdminDashboard() {
           bunnyLibraryId: prepared.libraryId,
           bunnyVideoId: prepared.videoId,
           bunnyEmbedUrl: prepared.embedUrl,
+          thumbnailUrl: thumbnail.thumbnailUrl,
+          thumbnailPublicId: thumbnail.thumbnailPublicId,
           youtubeUrl: formData.youtubeUrl || '',
           vimeoUrl: formData.vimeoUrl || '',
           featured: formData.featured,
@@ -320,6 +360,7 @@ export default function AdminDashboard() {
         featured: false,
       })
       setSelectedFile(null)
+      setSelectedThumbnailFile(null)
       fetchMedia()
     } catch (err) {
       console.error('Bunny video upload error:', err)
@@ -339,6 +380,8 @@ export default function AdminDashboard() {
       const token = localStorage.getItem('token')
       let cloudinaryUrl = ''
       let cloudinaryPublicId = ''
+      let thumbnailUrl = ''
+      let thumbnailPublicId = ''
 
       const isVideoFile = selectedFile && (
         (selectedFile.type && selectedFile.type.startsWith('video/')) ||
@@ -350,8 +393,14 @@ export default function AdminDashboard() {
       if (formData.type === 'video' && selectedFile) {
         throw new Error('Use the Upload Video File button for Bunny Stream video uploads.')
       }
-      if (formData.type === 'video' && !formData.youtubeUrl && !formData.vimeoUrl) {
-        throw new Error('Add a YouTube/Vimeo URL, or choose a video file and use Upload Video File.')
+      if (formData.type === 'video') {
+        throw new Error('Choose a video file and use Upload Video File.')
+      }
+
+      if (formData.type === 'video' && selectedThumbnailFile) {
+        const thumbnail = await uploadThumbnailToCloudinary(selectedThumbnailFile, token)
+        thumbnailUrl = thumbnail.thumbnailUrl
+        thumbnailPublicId = thumbnail.thumbnailPublicId
       }
 
       // Video or any file > 4.5 MB: upload directly to Cloudinary (never send to our API)
@@ -390,6 +439,8 @@ export default function AdminDashboard() {
             type: isVideoFile ? 'video' : formData.type,
             cloudinaryUrl,
             cloudinaryPublicId,
+            thumbnailUrl,
+            thumbnailPublicId,
             youtubeUrl: formData.youtubeUrl || '',
             vimeoUrl: formData.vimeoUrl || '',
             featured: formData.featured,
@@ -419,6 +470,8 @@ export default function AdminDashboard() {
         data.append('featured', formData.featured)
         if (cloudinaryUrl) data.append('cloudinaryUrl', cloudinaryUrl)
         if (cloudinaryPublicId) data.append('cloudinaryPublicId', cloudinaryPublicId)
+        if (thumbnailUrl) data.append('thumbnailUrl', thumbnailUrl)
+        if (thumbnailPublicId) data.append('thumbnailPublicId', thumbnailPublicId)
 
         res = await fetch('/api/media/upload', {
           method: 'POST',
@@ -439,6 +492,7 @@ export default function AdminDashboard() {
           featured: false,
         })
         setSelectedFile(null)
+        setSelectedThumbnailFile(null)
         fetchMedia()
       } else {
         let errorMessage = `Upload failed (Status: ${res.status})`
@@ -481,6 +535,7 @@ export default function AdminDashboard() {
       category: item.category || '',
       featured: item.featured || false,
     })
+    setEditThumbnailFile(null)
   }
 
   const handleCancelEdit = () => {
@@ -490,23 +545,30 @@ export default function AdminDashboard() {
       category: '',
       featured: false,
     })
+    setEditThumbnailFile(null)
   }
 
   const handleSaveEdit = async (id) => {
     try {
       const token = localStorage.getItem('token')
+      const thumbnail = await uploadThumbnailToCloudinary(editThumbnailFile, token)
+      const updates = {
+        ...editFormData,
+        ...(thumbnail.thumbnailUrl ? thumbnail : {}),
+      }
       const res = await fetch(`/api/media/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(editFormData),
+        body: JSON.stringify(updates),
       })
 
       if (res.ok) {
         alert('Updated successfully!')
         setEditingItem(null)
+        setEditThumbnailFile(null)
         fetchMedia()
       } else {
         const errorData = await res.json()
@@ -656,10 +718,12 @@ export default function AdminDashboard() {
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                required
+                required={formData.type === 'image'}
                 className="w-full px-4 py-2 border border-gray-300 bg-white text-black focus:outline-none focus:border-black"
               >
-                <option value="">Select Category</option>
+                <option value="">
+                  {formData.type === 'video' ? 'Category (optional)' : 'Select Category'}
+                </option>
                 <option value="Portraits">Portraits</option>
                 <option value="Travel">Travel</option>
                 <option value="Nature">Nature</option>
@@ -693,24 +757,6 @@ export default function AdminDashboard() {
               <>
                 <div>
                   <input
-                    type="url"
-                    placeholder="YouTube URL (optional)"
-                    value={formData.youtubeUrl}
-                    onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 bg-white text-black focus:outline-none focus:border-black"
-                  />
-                </div>
-                <div>
-                  <input
-                    type="url"
-                    placeholder="Vimeo URL (optional)"
-                    value={formData.vimeoUrl}
-                    onChange={(e) => setFormData({ ...formData, vimeoUrl: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 bg-white text-black focus:outline-none focus:border-black"
-                  />
-                </div>
-                <div>
-                  <input
                     type="file"
                     accept="video/mp4,video/quicktime,video/webm,video/x-m4v,video/*"
                     onChange={(e) => setSelectedFile(e.target.files[0] || null)}
@@ -719,13 +765,27 @@ export default function AdminDashboard() {
                   <button
                     type="button"
                     onClick={handleVideoWidgetUpload}
-                    disabled={uploading || !formData.title || !formData.category || !selectedFile}
+                    disabled={uploading || !formData.title || !selectedFile}
                     className="px-8 py-3 bg-black text-white hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Upload Video File
                   </button>
                   <p className="mt-2 text-sm text-gray-500">
                     Uploads large video files to Bunny Stream. Photos still use Cloudinary.
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-black">
+                    Video Thumbnail (optional)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setSelectedThumbnailFile(e.target.files[0] || null)}
+                    className="w-full px-4 py-2 text-black file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
+                  />
+                  <p className="mt-2 text-sm text-gray-500">
+                    This image appears before the video plays and in admin previews.
                   </p>
                 </div>
               </>
@@ -741,15 +801,15 @@ export default function AdminDashboard() {
             </div>
             {formData.type === 'video' && (
               <>
-                <p className="text-sm text-gray-500">Use the Bunny Stream upload button for video files. The regular button below is only for saving YouTube or Vimeo links.</p>
+                <p className="text-sm text-gray-500">Use the Bunny Stream upload button for video files.</p>
               </>
             )}
             <button
               type="submit"
-              disabled={uploading}
+              disabled={uploading || formData.type === 'video'}
               className="px-8 py-3 bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
-              {uploading ? (formData.type === 'video' ? 'Working…' : 'Uploading...') : formData.type === 'video' ? 'Save Video Link' : 'Upload'}
+              {uploading ? (formData.type === 'video' ? 'Working…' : 'Uploading...') : formData.type === 'video' ? 'Use Upload Video File' : 'Upload'}
             </button>
             {uploading && uploadStatus && (
               <div className="max-w-xl">
@@ -770,11 +830,27 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {mediaArray.length > 0 ? mediaArray.map((item) => (
               <div key={item._id} className="border border-gray-300 p-4">
-                {item.cloudinaryUrl && (
+                {item.type === 'video' && item.thumbnailUrl && (
+                  <div className="relative aspect-video mb-4 overflow-hidden border border-gray-200 bg-black">
+                    <Image
+                      src={item.thumbnailUrl}
+                      alt={`${item.title || 'Video'} thumbnail`}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                      <span className="rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-black">
+                        Video
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {item.cloudinaryUrl && !(item.type === 'video' && item.thumbnailUrl) && (
                   <div className="relative aspect-square mb-4">
                     {item.type === 'video' ? (
                       <video
                         src={item.cloudinaryUrl}
+                        poster={item.thumbnailUrl || undefined}
                         className="h-full w-full object-cover"
                         muted
                         playsInline
@@ -790,7 +866,7 @@ export default function AdminDashboard() {
                     )}
                   </div>
                 )}
-                {!item.cloudinaryUrl && item.bunnyEmbedUrl && (
+                {!item.cloudinaryUrl && item.bunnyEmbedUrl && !item.thumbnailUrl && (
                   <div className="relative mb-4 aspect-video overflow-hidden border border-gray-200 bg-black">
                     <iframe
                       src={item.bunnyEmbedUrl}
@@ -827,6 +903,17 @@ export default function AdminDashboard() {
                         <option value="Design">Design</option>
                       </select>
                     </div>
+                    {item.type === 'video' && (
+                      <div>
+                        <label className="mb-2 block text-sm text-black">Replace Video Thumbnail</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setEditThumbnailFile(e.target.files[0] || null)}
+                          className="w-full px-3 py-2 text-black file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
+                        />
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"

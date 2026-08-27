@@ -27,14 +27,30 @@ export async function PUT(request, { params }) {
     if (body.category !== undefined) updates.category = body.category
     if (body.featured !== undefined) updates.featured = body.featured
     if (body.order !== undefined) updates.order = body.order
+    if (body.thumbnailUrl !== undefined) updates.thumbnailUrl = body.thumbnailUrl
+    if (body.thumbnailPublicId !== undefined) updates.thumbnailPublicId = body.thumbnailPublicId
 
-    const media = await Media.findByIdAndUpdate(id, updates, { new: true })
+    const existingMedia = await Media.findById(id)
 
-    if (!media) {
+    if (!existingMedia) {
       return NextResponse.json(
         { error: 'Media not found' },
         { status: 404 }
       )
+    }
+
+    const media = await Media.findByIdAndUpdate(id, updates, { new: true })
+
+    if (
+      updates.thumbnailPublicId &&
+      existingMedia.thumbnailPublicId &&
+      updates.thumbnailPublicId !== existingMedia.thumbnailPublicId
+    ) {
+      try {
+        await cloudinary.uploader.destroy(existingMedia.thumbnailPublicId)
+      } catch (error) {
+        console.error('Cloudinary thumbnail delete error:', error)
+      }
     }
 
     return NextResponse.json(media)
@@ -73,6 +89,14 @@ export async function DELETE(request, { params }) {
         await cloudinary.uploader.destroy(media.cloudinaryPublicId)
       } catch (error) {
         console.error('Cloudinary delete error:', error)
+      }
+    }
+
+    if (media.thumbnailPublicId) {
+      try {
+        await cloudinary.uploader.destroy(media.thumbnailPublicId)
+      } catch (error) {
+        console.error('Cloudinary thumbnail delete error:', error)
       }
     }
 

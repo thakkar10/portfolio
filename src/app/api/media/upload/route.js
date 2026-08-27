@@ -35,6 +35,8 @@ export async function POST(request) {
     const featured = formData.get('featured') === 'true'
     const cloudinaryUrlFromClient = formData.get('cloudinaryUrl')
     const cloudinaryPublicIdFromClient = formData.get('cloudinaryPublicId')
+    const thumbnailUrlFromClient = formData.get('thumbnailUrl')
+    const thumbnailPublicIdFromClient = formData.get('thumbnailPublicId')
     const captionFromClient = formData.get('caption')
 
     console.log('📋 Form data:', { title, category, type, hasFile: !!file, fileSize: file?.size, hasDirectUrl: !!cloudinaryUrlFromClient })
@@ -101,6 +103,8 @@ export async function POST(request) {
       type,
       cloudinaryUrl,
       cloudinaryPublicId,
+      thumbnailUrl: thumbnailUrlFromClient && typeof thumbnailUrlFromClient === 'string' ? thumbnailUrlFromClient.trim() : '',
+      thumbnailPublicId: thumbnailPublicIdFromClient && typeof thumbnailPublicIdFromClient === 'string' ? thumbnailPublicIdFromClient.trim() : '',
       youtubeUrl,
       vimeoUrl,
       featured,
