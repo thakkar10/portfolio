@@ -10,3 +10,10 @@ export function shuffleItems(items) {
 
   return shuffled
 }
+
+export function shuffleWithPinned(items) {
+  const pinned = items.filter((item) => item.pinned)
+  const unpinned = items.filter((item) => !item.pinned)
+
+  return [...pinned, ...shuffleItems(unpinned)]
+}

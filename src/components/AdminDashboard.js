@@ -28,6 +28,7 @@ export default function AdminDashboard() {
     title: '',
     category: '',
     featured: false,
+    pinned: false,
   })
   const [editThumbnailFile, setEditThumbnailFile] = useState(null)
   const [editFrameVideoFile, setEditFrameVideoFile] = useState(null)
@@ -43,6 +44,7 @@ export default function AdminDashboard() {
     youtubeUrl: '',
     vimeoUrl: '',
     featured: false,
+    pinned: false,
   })
   const [selectedFile, setSelectedFile] = useState(null)
   const [selectedThumbnailFile, setSelectedThumbnailFile] = useState(null)
@@ -88,9 +90,6 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!editFrameVideoFile) {
-      setEditFrameVideoPreviewUrl('')
-      setEditVideoDuration(0)
-      setEditVideoFrameTime(0)
       return
     }
 
@@ -342,7 +341,7 @@ export default function AdminDashboard() {
   }
 
   const makeThumbnailFileFromVideo = async (video, sourceFile) => {
-    if (!video || !sourceFile) return null
+    if (!video) return null
 
     if (!video.videoWidth || !video.videoHeight) {
       alert('Let the video preview load first, then choose a thumbnail frame.')
@@ -353,10 +352,20 @@ export default function AdminDashboard() {
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
     const context = canvas.getContext('2d')
-    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    try {
+      context.drawImage(video, 0, 0, canvas.width, canvas.height)
+    } catch (_) {
+      alert('This hosted video cannot be captured by the browser. Upload a thumbnail image instead.')
+      return null
+    }
 
     const blob = await new Promise((resolve) => {
-      canvas.toBlob(resolve, 'image/jpeg', 0.9)
+      try {
+        canvas.toBlob(resolve, 'image/jpeg', 0.9)
+      } catch (_) {
+        resolve(null)
+      }
     })
 
     if (!blob) {
@@ -364,7 +373,7 @@ export default function AdminDashboard() {
       return null
     }
 
-    const baseName = (sourceFile.name || 'video').replace(/\.[^/.]+$/, '')
+    const baseName = (sourceFile?.name || 'video').replace(/\.[^/.]+$/, '')
     return new File([blob], `${baseName}-thumbnail.jpg`, { type: 'image/jpeg' })
   }
 
@@ -469,6 +478,7 @@ export default function AdminDashboard() {
           youtubeUrl: formData.youtubeUrl || '',
           vimeoUrl: formData.vimeoUrl || '',
           featured: formData.featured,
+          pinned: formData.pinned,
         }),
       })
 
@@ -485,6 +495,7 @@ export default function AdminDashboard() {
         youtubeUrl: '',
         vimeoUrl: '',
         featured: false,
+        pinned: false,
       })
       setSelectedFile(null)
       setSelectedThumbnailFile(null)
@@ -571,6 +582,7 @@ export default function AdminDashboard() {
             youtubeUrl: formData.youtubeUrl || '',
             vimeoUrl: formData.vimeoUrl || '',
             featured: formData.featured,
+            pinned: formData.pinned,
           }),
         })
       } else {
@@ -595,6 +607,7 @@ export default function AdminDashboard() {
         if (formData.youtubeUrl) data.append('youtubeUrl', formData.youtubeUrl)
         if (formData.vimeoUrl) data.append('vimeoUrl', formData.vimeoUrl)
         data.append('featured', formData.featured)
+        data.append('pinned', formData.pinned)
         if (cloudinaryUrl) data.append('cloudinaryUrl', cloudinaryUrl)
         if (cloudinaryPublicId) data.append('cloudinaryPublicId', cloudinaryPublicId)
         if (thumbnailUrl) data.append('thumbnailUrl', thumbnailUrl)
@@ -617,6 +630,7 @@ export default function AdminDashboard() {
           youtubeUrl: '',
           vimeoUrl: '',
           featured: false,
+          pinned: false,
         })
         setSelectedFile(null)
         setSelectedThumbnailFile(null)
@@ -661,9 +675,13 @@ export default function AdminDashboard() {
       title: item.title || '',
       category: item.category || '',
       featured: item.featured || false,
+      pinned: item.pinned || false,
     })
     setEditThumbnailFile(null)
     setEditFrameVideoFile(null)
+    setEditFrameVideoPreviewUrl(item.type === 'video' && item.cloudinaryUrl ? item.cloudinaryUrl : '')
+    setEditVideoDuration(0)
+    setEditVideoFrameTime(0)
   }
 
   const handleCancelEdit = () => {
@@ -672,9 +690,13 @@ export default function AdminDashboard() {
       title: '',
       category: '',
       featured: false,
+      pinned: false,
     })
     setEditThumbnailFile(null)
     setEditFrameVideoFile(null)
+    setEditFrameVideoPreviewUrl('')
+    setEditVideoDuration(0)
+    setEditVideoFrameTime(0)
   }
 
   const handleSaveEdit = async (id) => {
@@ -699,6 +721,9 @@ export default function AdminDashboard() {
         setEditingItem(null)
         setEditThumbnailFile(null)
         setEditFrameVideoFile(null)
+        setEditFrameVideoPreviewUrl('')
+        setEditVideoDuration(0)
+        setEditVideoFrameTime(0)
         fetchMedia()
       } else {
         const errorData = await res.json()
@@ -988,6 +1013,16 @@ export default function AdminDashboard() {
               />
               <label htmlFor="featured" className="text-black">Featured</label>
             </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="pinned"
+                checked={formData.pinned}
+                onChange={(e) => setFormData({ ...formData, pinned: e.target.checked })}
+              />
+              <label htmlFor="pinned" className="text-black">Pin to top</label>
+              <span className="text-sm text-gray-500">Admin-only ordering control.</span>
+            </div>
             {formData.type === 'video' && (
               <>
                 <p className="text-sm text-gray-500">Use the Bunny Stream upload button for video files.</p>
@@ -1094,29 +1129,35 @@ export default function AdminDashboard() {
                     </div>
                     {item.type === 'video' && (
                       <div className="space-y-4 border border-gray-200 bg-gray-50 p-4">
-                        <div>
-                          <label className="mb-2 block text-sm font-medium text-black">
-                            Pick Thumbnail From Clip
-                          </label>
-                          <input
-                            type="file"
-                            accept="video/mp4,video/quicktime,video/webm,video/x-m4v,video/*"
-                            onChange={(e) => {
-                              setEditFrameVideoFile(e.target.files[0] || null)
-                              setEditThumbnailFile(null)
-                            }}
-                            className="w-full px-3 py-2 text-black file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
-                          />
-                          <p className="mt-2 text-xs leading-5 text-gray-500">
-                            Choose the original clip to grab a new thumbnail frame. This does not replace the uploaded video.
-                          </p>
-                        </div>
+                        {!item.cloudinaryUrl && (
+                          <div>
+                            <label className="mb-2 block text-sm font-medium text-black">
+                              Pick Thumbnail From Clip
+                            </label>
+                            <input
+                              type="file"
+                              accept="video/mp4,video/quicktime,video/webm,video/x-m4v,video/*"
+                              onChange={(e) => {
+                                setEditFrameVideoFile(e.target.files[0] || null)
+                                setEditThumbnailFile(null)
+                              }}
+                              className="w-full px-3 py-2 text-black file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
+                            />
+                            <p className="mt-2 text-xs leading-5 text-gray-500">
+                              Bunny embeds cannot expose their raw frame here, so choose the original clip to grab a new thumbnail. This does not replace the uploaded video.
+                            </p>
+                          </div>
+                        )}
 
                         {editFrameVideoPreviewUrl && (
                           <div>
+                            <p className="mb-2 text-sm font-medium text-black">
+                              {item.cloudinaryUrl ? 'Pick Thumbnail From Uploaded Video' : 'Pick Thumbnail From Clip'}
+                            </p>
                             <video
                               ref={editVideoPreviewRef}
                               src={editFrameVideoPreviewUrl}
+                              crossOrigin="anonymous"
                               controls
                               playsInline
                               preload="metadata"
@@ -1187,6 +1228,15 @@ export default function AdminDashboard() {
                       />
                       <label htmlFor={`featured-${item._id}`} className="text-sm text-black">Featured</label>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`pinned-${item._id}`}
+                        checked={editFormData.pinned}
+                        onChange={(e) => setEditFormData({ ...editFormData, pinned: e.target.checked })}
+                      />
+                      <label htmlFor={`pinned-${item._id}`} className="text-sm text-black">Pin to top</label>
+                    </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleSaveEdit(item._id)}
@@ -1209,6 +1259,9 @@ export default function AdminDashboard() {
                     <p className="text-sm text-gray-600 mb-2">Type: {item.type}</p>
                     {item.featured && (
                       <p className="text-sm text-blue-600 mb-4">⭐ Featured</p>
+                    )}
+                    {item.pinned && (
+                      <p className="text-sm text-gray-700 mb-4">Pinned to top</p>
                     )}
                     <div className="flex gap-2">
                       <button

@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import { useSearchParams } from 'next/navigation'
+import { shuffleWithPinned } from '@/lib/shuffle'
 
 function videoEmbedUrl(video) {
   if (video.bunnyEmbedUrl) return video.bunnyEmbedUrl
@@ -36,7 +37,7 @@ function VideoContent() {
           setError(typeof data?.error === 'string' ? data.error : 'Failed to load videos')
           setVideos([])
         } else {
-          setVideos(Array.isArray(data) ? data : [])
+          setVideos(Array.isArray(data) ? shuffleWithPinned(data) : [])
         }
         setLoading(false)
       })

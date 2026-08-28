@@ -40,6 +40,7 @@ export async function POST(request) {
       youtubeUrl = '',
       vimeoUrl = '',
       featured = false,
+      pinned = false,
       caption = '',
     } = body
 
@@ -83,6 +84,7 @@ export async function POST(request) {
       youtubeUrl: (youtubeUrl && typeof youtubeUrl === 'string') ? youtubeUrl.trim() : '',
       vimeoUrl: (vimeoUrl && typeof vimeoUrl === 'string') ? vimeoUrl.trim() : '',
       featured: !!featured,
+      pinned: !!pinned,
       caption: mediaCaption,
     })
 

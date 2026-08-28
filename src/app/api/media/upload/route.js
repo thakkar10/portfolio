@@ -33,6 +33,7 @@ export async function POST(request) {
     const youtubeUrl = formData.get('youtubeUrl') || ''
     const vimeoUrl = formData.get('vimeoUrl') || ''
     const featured = formData.get('featured') === 'true'
+    const pinned = formData.get('pinned') === 'true'
     const cloudinaryUrlFromClient = formData.get('cloudinaryUrl')
     const cloudinaryPublicIdFromClient = formData.get('cloudinaryPublicId')
     const thumbnailUrlFromClient = formData.get('thumbnailUrl')
@@ -108,6 +109,7 @@ export async function POST(request) {
       youtubeUrl,
       vimeoUrl,
       featured,
+      pinned,
       caption,
     })
 

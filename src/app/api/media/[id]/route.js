@@ -26,6 +26,7 @@ export async function PUT(request, { params }) {
     if (body.title !== undefined) updates.title = body.title
     if (body.category !== undefined) updates.category = body.category
     if (body.featured !== undefined) updates.featured = body.featured
+    if (body.pinned !== undefined) updates.pinned = body.pinned
     if (body.order !== undefined) updates.order = body.order
     if (body.thumbnailUrl !== undefined) updates.thumbnailUrl = body.thumbnailUrl
     if (body.thumbnailPublicId !== undefined) updates.thumbnailPublicId = body.thumbnailPublicId
