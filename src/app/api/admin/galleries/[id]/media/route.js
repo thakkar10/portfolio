@@ -22,7 +22,11 @@ export async function POST(request, { params }) {
     if (gallery.media.some((item) => item.publicId === publicId)) return NextResponse.json({ error: 'Already added' }, { status: 409 })
     const sdk = configureGalleryCloudinary()
     const resource = await sdk.api.resource(publicId, { resource_type: 'image', type: 'authenticated' })
-    if (resource.asset_id !== assetId || resource.type !== 'authenticated' || resource.resource_type !== 'image') {
+    if (
+      resource.asset_id !== assetId || resource.type !== 'authenticated' || resource.resource_type !== 'image' ||
+      typeof resource.format !== 'string' || !['jpg', 'jpeg', 'png', 'webp'].includes(resource.format.toLowerCase()) ||
+      !Number.isFinite(resource.bytes) || resource.bytes <= 0 || resource.bytes > 10 * 1024 * 1024
+    ) {
       return NextResponse.json({ error: 'Upload verification failed' }, { status: 400 })
     }
     const mediaId = new mongoose.Types.ObjectId()
