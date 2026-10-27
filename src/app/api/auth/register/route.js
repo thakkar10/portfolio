@@ -1,12 +1,17 @@
+/* global process */
 import { NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 import jwt from 'jsonwebtoken'
+import { verifyToken } from '@/middleware/auth'
 
 // Mark as dynamic to prevent build-time evaluation
 export const dynamic = 'force-dynamic'
 
 export async function POST(request) {
+  if (!verifyToken(request).valid) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   try {
     const { username, password } = await request.json()
 
@@ -38,7 +43,7 @@ export async function POST(request) {
 
     const token = jwt.sign(
       { userId: user._id, username: user.username },
-      process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     )
 

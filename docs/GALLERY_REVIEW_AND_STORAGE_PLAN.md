@@ -25,4 +25,6 @@ Use **CodeRabbit OSS** for automated PR review. Its public-repository plan curre
 
 Protect `main` with a GitHub rule requiring a pull request and the `Gallery lint and build` check. If another collaborator can review, require one human approval too. The owner should not rely on an AI comment as an approval of their own PR. Keep the client-gallery branch and PR unmerged until both the checks and review have been considered.
 
+The `main` ruleset is active and requires a pull request, resolved review conversations, and the passing gallery check. The PR remains a draft. During review, the inherited admin registration endpoint was found to allow public account creation, so registration now requires an existing admin token and admin JWT verification fails closed when `JWT_SECRET` is absent. CodeRabbit still needs to be connected from a signed-in GitHub browser session.
+
 References: [GitHub public Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions), [GitHub protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches), [CodeRabbit OSS](https://www.coderabbit.ai/oss).

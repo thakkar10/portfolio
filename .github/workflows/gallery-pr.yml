@@ -23,6 +23,9 @@ jobs:
           npx eslint
           src/app/admin/galleries
           src/app/api/admin/galleries
+          src/app/api/auth/login/route.js
+          src/app/api/auth/register/route.js
+          src/app/api/auth/verify/route.js
           src/app/api/galleries
           src/app/client-gallery/page.js
           src/app/g
@@ -30,5 +33,6 @@ jobs:
           src/lib/clientGallery.js
           src/models/ClientGallery.js
           src/models/GallerySelection.js
+          src/middleware/auth.js
       - name: Build application
         run: npm run build

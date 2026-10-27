@@ -1,3 +1,4 @@
+/* global process */
 import { NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
@@ -7,6 +8,9 @@ import jwt from 'jsonwebtoken'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request) {
+  if (!process.env.JWT_SECRET) {
+    return NextResponse.json({ error: 'Admin authentication is not configured' }, { status: 503 })
+  }
   try {
     const { username, password } = await request.json()
 
@@ -37,7 +41,7 @@ export async function POST(request) {
 
     const token = jwt.sign(
       { userId: user._id, username: user.username },
-      process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     )
 

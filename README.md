@@ -79,15 +79,17 @@ npm run dev
 
 ## Creating Your Admin Account
 
-1. Visit `/api/auth/register` endpoint or create a user manually in MongoDB
-2. Or use the registration API:
+Existing admin accounts continue to work. For a fresh installation, create the first admin in MongoDB with a bcrypt-hashed password and set `JWT_SECRET` to a unique secret. Public registration is disabled because registered accounts can access the admin dashboard.
+
+After signing in as an admin, you can create another account with the registration API:
 ```bash
 curl -X POST http://localhost:3000/api/auth/register \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{"username":"admin","password":"yourpassword"}'
 ```
 
-3. Login at `/admin/login`
+Login at `/admin/login`.
 
 ## Project Structure
 
