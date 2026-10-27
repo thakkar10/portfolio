@@ -142,8 +142,8 @@ export default function GalleriesAdminPage() {
   const addFiles = async (files) => {
     if (!files.length) return
     if (busy > 0) { setError('Wait for the current batch to finish before adding more photos.'); return }
-    const valid = files.filter((file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) && file.size <= 100 * 1024 * 1024).sort((a, b) => (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name, undefined, { numeric: true }))
-    if (valid.length !== files.length) setError('Some files were skipped. Choose JPEG, PNG, or WebP images up to 100 MB each.')
+    const valid = files.filter((file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) && file.size <= 10 * 1024 * 1024).sort((a, b) => (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name, undefined, { numeric: true }))
+    if (valid.length !== files.length) setError('Some files were skipped. This storage plan accepts JPEG, PNG, or WebP images up to 10 MB each.')
     if (!valid.length) return
     if (demoMode) {
       const localMedia = valid.map((file, index) => ({ id: `local-${crypto.randomUUID()}`, filename: file.name, width: 3, height: 2, set: 'Highlights', order: index, thumbUrl: URL.createObjectURL(file), fullUrl: URL.createObjectURL(file) }))
@@ -278,7 +278,7 @@ export default function GalleriesAdminPage() {
                 <p>Select your finished images. A draft gallery will take shape as they upload, ready for you to make it yours.</p>
                 <button className="gallery-primary" onClick={() => fileInput.current?.click()}>Choose photographs <span>↗</span></button>
                 <button className="gallery-folder-action" onClick={() => folderInput.current?.click()}>Choose a folder</button>
-                <span className="empty-support">Or drop photos here · JPEG, PNG, or WebP</span>
+                <span className="empty-support">Or drop photos here · JPEG, PNG, or WebP · Up to 10 MB each</span>
                 {uploads.length > 0 && <div className="empty-upload-progress" role="status">Preparing gallery · {uploads.length} photos selected</div>}
               </div>
             ) : (
