@@ -1,6 +1,6 @@
 # Client gallery photo storage
 
-Decision for the first implementation: **Cloudinary authenticated image assets for files, MongoDB for gallery records.** This uses infrastructure already configured in the portfolio and keeps private originals and display derivatives out of ordinary public Cloudinary URLs.
+Decision for the first implementation: **Cloudinary authenticated image assets for files, MongoDB for gallery records.** This uses infrastructure already configured in the portfolio and keeps private originals and display derivatives out of ordinary public Cloudinary URLs. For full-resolution client delivery, the planned migration is private Cloudflare R2 storage; see [the storage and review plan](GALLERY_REVIEW_AND_STORAGE_PLAN.md).
 
 ## Upload path
 
