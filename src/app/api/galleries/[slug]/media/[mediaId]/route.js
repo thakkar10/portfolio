@@ -33,7 +33,7 @@ export async function GET(request, { params }) {
         'X-Content-Type-Options': 'nosniff',
       },
     })
-  } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Could not load photo' }, { status: 500 })
   }
 }

@@ -27,7 +27,7 @@ export async function POST(request, { params }) {
       path: `/api/galleries/${slug}`, maxAge: 7 * 24 * 60 * 60,
     })
     return response
-  } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Could not unlock gallery' }, { status: 500 })
   }
 }

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
   const auth = verifyToken(request)
-  if (!auth.valid) return NextResponse.json({ valid: false, error: auth.error }, { status: 401 })
+  if (!auth.valid) return NextResponse.json({ valid: false, error: 'Authentication required' }, { status: 401 })
   return NextResponse.json({ valid: true, username: auth.user.username })
 }
 

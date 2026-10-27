@@ -15,7 +15,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ locked: true, title: gallery.title, slug: gallery.slug }, { headers: { 'Cache-Control': 'no-store' } })
     }
     return NextResponse.json({ locked: false, gallery: publicGalleryData(gallery) }, { headers: { 'Cache-Control': 'no-store' } })
-  } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Could not load gallery' }, { status: 500 })
   }
 }
