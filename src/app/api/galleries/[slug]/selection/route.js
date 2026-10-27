@@ -45,7 +45,7 @@ export async function GET(request, { params }) {
     const token = selectionToken(request)
     if (!token) return NextResponse.json({ error: 'Selection link required' }, { status: 400 })
     const selection = await GallerySelection.findOne({ galleryId: gallery._id, tokenHash: hash(token) }).lean()
-    if (!selection) return NextResponse.json({ error: 'Selection not found' }, { status: 404 })
+    if (!selection) return NextResponse.json({ error: 'Selection not found', code: 'SELECTION_NOT_FOUND' }, { status: 404 })
     return NextResponse.json({ selection: publicSelection(selection) }, { headers: { 'Cache-Control': 'no-store' } })
   } catch { return NextResponse.json({ error: 'Could not load selection' }, { status: 500 }) }
 }

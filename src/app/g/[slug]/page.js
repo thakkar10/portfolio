@@ -63,6 +63,7 @@ export default function DeliveredGalleryPage() {
           if (!response.ok) {
             const loadError = new Error(data.error || 'Could not load your selection')
             loadError.status = response.status
+            loadError.code = data.code
             throw loadError
           }
           localStorage.setItem(key, token)
@@ -74,7 +75,7 @@ export default function DeliveredGalleryPage() {
           return
         } catch (loadError) {
           lastError = loadError
-          if (loadError.status === 404) {
+          if (loadError.status === 404 && loadError.code === 'SELECTION_NOT_FOUND') {
             if (token === stored) localStorage.removeItem(key)
             if (token === fromLink) window.history.replaceState({}, '', window.location.pathname)
             continue
