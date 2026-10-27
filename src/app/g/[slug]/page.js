@@ -50,22 +50,42 @@ export default function DeliveredGalleryPage() {
     if (!galleryId || slug === 'demo') return
     const key = `gallery-selection-${galleryId}`
     const fromLink = new URLSearchParams(window.location.search).get('selection')
-    const saved = fromLink || localStorage.getItem(key)
-    if (!saved) return
-    if (fromLink) window.history.replaceState({}, '', window.location.pathname)
+    const stored = localStorage.getItem(key)
+    const tokens = [fromLink, stored].filter((token, index, values) => token && values.indexOf(token) === index)
+    if (!tokens.length) return
     setSelectionLoading(true)
-    fetch(`/api/galleries/${slug}/selection`, { headers: { 'X-Selection-Token': saved }, cache: 'no-store' })
-      .then(async (response) => {
-        const data = await response.json().catch(() => ({}))
-        if (!response.ok) throw new Error(data.error || 'Could not load your selection')
-        localStorage.setItem(key, saved)
-        setSelectionToken(saved)
-        setSelection(data.selection)
-        setFavorites(data.selection.mediaIds)
-        setSelectionName(data.selection.name || '')
-      })
-      .catch((loadError) => { localStorage.removeItem(key); setSelectionError(loadError.message) })
-      .finally(() => setSelectionLoading(false))
+    const restoreSelection = async () => {
+      let lastError
+      for (const token of tokens) {
+        try {
+          const response = await fetch(`/api/galleries/${slug}/selection`, { headers: { 'X-Selection-Token': token }, cache: 'no-store' })
+          const data = await response.json().catch(() => ({}))
+          if (!response.ok) {
+            const loadError = new Error(data.error || 'Could not load your selection')
+            loadError.status = response.status
+            throw loadError
+          }
+          localStorage.setItem(key, token)
+          setSelectionToken(token)
+          setSelection(data.selection)
+          setFavorites(data.selection.mediaIds)
+          setSelectionName(data.selection.name || '')
+          if (fromLink) window.history.replaceState({}, '', window.location.pathname)
+          return
+        } catch (loadError) {
+          lastError = loadError
+          if (loadError.status === 404) {
+            if (token === stored) localStorage.removeItem(key)
+            if (token === fromLink) window.history.replaceState({}, '', window.location.pathname)
+            continue
+          }
+          setSelectionToken(token)
+          break
+        }
+      }
+      setSelectionError(lastError.message)
+    }
+    restoreSelection().finally(() => setSelectionLoading(false))
   }, [galleryId, slug])
 
   const unlock = async (event) => {
@@ -81,6 +101,7 @@ export default function DeliveredGalleryPage() {
 
   const toggleFavorite = async (id) => {
     if (selectionBusy || selectionLoading || selection?.submittedAt) return
+    if (selectionToken && !selection) { setSelectionError('Refresh the page to restore your selection before editing it.'); return }
     const next = favorites.includes(id) ? favorites.filter((item) => item !== id) : [...favorites, id]
     setSelectionBusy(true); setSelectionError(''); setSelectionNotice('')
     try {
