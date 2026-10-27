@@ -31,8 +31,10 @@ jobs:
           src/app/g
           src/data/galleryDemo.js
           src/lib/clientGallery.js
+          src/lib/galleryUnlockLimit.js
           src/models/ClientGallery.js
           src/models/GallerySelection.js
+          src/models/GalleryUnlockAttempt.js
           src/middleware/auth.js
       - name: Build application
         run: npm run build

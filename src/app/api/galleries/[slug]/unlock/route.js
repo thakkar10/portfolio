@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import connectDB from '@/lib/mongodb'
 import ClientGallery from '@/models/ClientGallery'
 import { createGalleryAccessToken, galleryCookieName } from '@/lib/clientGallery'
+import { allowGalleryUnlock } from '@/lib/galleryUnlockLimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,9 @@ export async function POST(request, { params }) {
     await connectDB()
     const gallery = await ClientGallery.findOne({ slug, status: 'published' })
     if (!gallery) return NextResponse.json({ error: 'Gallery not found' }, { status: 404 })
+    if (!await allowGalleryUnlock(request, gallery._id)) {
+      return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429, headers: { 'Retry-After': '900' } })
+    }
     if (!gallery.passwordHash || typeof password !== 'string' || !await bcrypt.compare(password, gallery.passwordHash)) {
       return NextResponse.json({ error: 'Incorrect password' }, { status: 401 })
     }

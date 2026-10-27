@@ -22,11 +22,11 @@ export function galleryCookieName(id) {
 
 function accessSecret() {
   if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required for client galleries')
-  return process.env.JWT_SECRET
+  return crypto.createHmac('sha256', process.env.JWT_SECRET).update('client-gallery-access-v1').digest('hex')
 }
 
 export function createGalleryAccessToken(gallery) {
-  return jwt.sign({ galleryId: String(gallery._id), accessVersion: gallery.accessVersion }, accessSecret(), { expiresIn: '7d' })
+  return jwt.sign({ galleryId: String(gallery._id), accessVersion: gallery.accessVersion }, accessSecret(), { expiresIn: '7d', audience: 'client-gallery' })
 }
 
 export function canViewGallery(request, gallery) {
@@ -35,7 +35,7 @@ export function canViewGallery(request, gallery) {
   const token = request.cookies.get(galleryCookieName(gallery._id))?.value
   if (!token) return false
   try {
-    const payload = jwt.verify(token, accessSecret())
+    const payload = jwt.verify(token, accessSecret(), { audience: 'client-gallery' })
     return payload.galleryId === String(gallery._id) && payload.accessVersion === gallery.accessVersion
   } catch {
     return false
