@@ -5,8 +5,9 @@ import GalleryUnlockAttempt from '@/models/GalleryUnlockAttempt'
 const WINDOW_MS = 15 * 60 * 1000
 
 function clientHash(request) {
-  // Vercel overwrites this header. Other runtimes share one bucket until their ingress is configured as trusted.
-  const ip = process.env.VERCEL === '1' ? (request.headers.get('x-vercel-forwarded-for') || 'unknown').split(',')[0].trim() : 'unknown'
+  // A custom header is safe only when the deployment ingress strips or overwrites client-supplied values.
+  const header = process.env.VERCEL === '1' ? 'x-vercel-forwarded-for' : process.env.GALLERY_TRUSTED_CLIENT_IP_HEADER
+  const ip = header ? (request.headers.get(header) || 'unknown').split(',')[0].trim() : 'unknown'
   return crypto.createHash('sha256').update(ip).digest('hex')
 }
 
