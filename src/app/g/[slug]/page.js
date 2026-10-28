@@ -162,11 +162,15 @@ export default function DeliveredGalleryPage() {
   const selected = lightboxIndex === null ? null : visible[lightboxIndex]
 
   useEffect(() => {
+    if (lightboxIndex !== null && lightboxIndex >= visible.length) setLightboxIndex(null)
+  }, [lightboxIndex, visible.length])
+
+  useEffect(() => {
     if (lightboxIndex === null) return
     const onKey = (event) => {
       if (event.key === 'Escape') setLightboxIndex(null)
-      if (event.key === 'ArrowRight') setLightboxIndex((index) => Math.min(visible.length - 1, index + 1))
-      if (event.key === 'ArrowLeft') setLightboxIndex((index) => Math.max(0, index - 1))
+      if (visible.length && event.key === 'ArrowRight') setLightboxIndex((index) => Math.min(visible.length - 1, index + 1))
+      if (visible.length && event.key === 'ArrowLeft') setLightboxIndex((index) => Math.max(0, index - 1))
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

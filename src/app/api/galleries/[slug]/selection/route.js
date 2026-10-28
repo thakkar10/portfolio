@@ -4,6 +4,7 @@ import connectDB from '@/lib/mongodb'
 import ClientGallery from '@/models/ClientGallery'
 import GallerySelection from '@/models/GallerySelection'
 import { canViewGallery } from '@/lib/clientGallery'
+import { allowGallerySelectionCreate } from '@/lib/galleryUnlockLimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,6 +58,9 @@ export async function POST(request, { params }) {
     if (error) return error
     const body = await request.json()
     if (!validIds(body.mediaIds, gallery)) return NextResponse.json({ error: 'Invalid photos' }, { status: 400 })
+    if (!await allowGallerySelectionCreate(request, gallery._id)) {
+      return NextResponse.json({ error: 'Too many selections. Try again later.' }, { status: 429, headers: { 'Retry-After': '900' } })
+    }
     const token = crypto.randomBytes(32).toString('hex')
     const selection = await GallerySelection.create({ galleryId: gallery._id, tokenHash: hash(token), mediaIds: body.mediaIds })
     return NextResponse.json({ token, selection: publicSelection(selection) }, { status: 201, headers: { 'Cache-Control': 'no-store' } })

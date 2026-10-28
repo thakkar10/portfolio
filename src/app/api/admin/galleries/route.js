@@ -10,10 +10,13 @@ export async function GET(request) {
   if (!verifyToken(request).valid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     await connectDB()
-    const galleries = await ClientGallery.find({}).select('title slug status coverMediaId media filename updatedAt').sort({ updatedAt: -1 }).lean()
+    const galleries = await ClientGallery.aggregate([
+      { $project: { title: 1, slug: 1, status: 1, updatedAt: 1, photoCount: { $size: { $ifNull: ['$media', []] } } } },
+      { $sort: { updatedAt: -1 } },
+    ])
     return NextResponse.json(galleries.map((gallery) => ({
       id: String(gallery._id), title: gallery.title, slug: gallery.slug, status: gallery.status,
-      photoCount: gallery.media.length, updatedAt: gallery.updatedAt,
+      photoCount: gallery.photoCount, updatedAt: gallery.updatedAt,
     })))
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

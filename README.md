@@ -86,7 +86,7 @@ After signing in as an admin, you can create another account with the registrati
 curl -X POST http://localhost:3000/api/auth/register \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '{"username":"admin","password":"yourpassword"}'
+  -d '{"username":"second-admin","password":"yourpassword"}'
 ```
 
 Login at `/admin/login`.

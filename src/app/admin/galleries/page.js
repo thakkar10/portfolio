@@ -58,6 +58,7 @@ export default function GalleriesAdminPage() {
   const [gallery, setGallery] = useState(null)
   const [form, setForm] = useState(initialForm)
   const [uploads, setUploads] = useState([])
+  const [preparing, setPreparing] = useState(false)
   const [selections, setSelections] = useState([])
   const [saving, setSaving] = useState(false)
   const [preview, setPreview] = useState(false)
@@ -141,7 +142,7 @@ export default function GalleriesAdminPage() {
 
   const addFiles = async (files) => {
     if (!files.length) return
-    if (busy > 0) { setError('Wait for the current batch to finish before adding more photos.'); return }
+    if (controlsBusy) { setError('Wait for the current batch to finish before adding more photos.'); return }
     const valid = files.filter((file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) && file.size <= 10 * 1024 * 1024).sort((a, b) => (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name, undefined, { numeric: true }))
     if (valid.length !== files.length) setError('Some files were skipped. This storage plan accepts JPEG, PNG, or WebP images up to 10 MB each.')
     if (!valid.length) return
@@ -155,7 +156,8 @@ export default function GalleriesAdminPage() {
       return
     }
     const entries = valid.map((file, index) => ({ key: crypto.randomUUID(), file, order: (gallery?.media.length || 0) + index, previewUrl: URL.createObjectURL(file), status: 'queued', progress: 0, error: '' }))
-    setUploads((current) => [...current, ...entries])
+    let entriesAdded = false
+    setPreparing(true)
     try {
       let galleryId = gallery?.id
       if (!galleryId) {
@@ -169,10 +171,16 @@ export default function GalleriesAdminPage() {
         await openGallery(galleryId)
         setNotice('Gallery moved to draft while you add photos. Publish it again when ready.')
       }
-      await uploadBatch(galleryId, entries)
+      const scopedEntries = entries.map((entry) => ({ ...entry, galleryId }))
+      setUploads((current) => [...current, ...scopedEntries])
+      entriesAdded = true
+      setPreparing(false)
+      await uploadBatch(galleryId, scopedEntries)
     } catch (uploadError) {
       setError(uploadError.message)
-      setUploads((current) => current.map((item) => entries.some((entry) => entry.key === item.key) && item.status === 'queued' ? { ...item, status: 'failed', error: uploadError.message } : item))
+      if (!entriesAdded) entries.forEach((entry) => URL.revokeObjectURL(entry.previewUrl))
+    } finally {
+      setPreparing(false)
     }
   }
 
@@ -189,8 +197,8 @@ export default function GalleriesAdminPage() {
   }
 
   const retry = async (entry) => {
-    if (!gallery) return
-    await uploadOne(gallery.id, entry)
+    if (!gallery || gallery.id !== entry.galleryId) return
+    await uploadOne(entry.galleryId, entry)
     await refreshList()
   }
 
@@ -237,9 +245,11 @@ export default function GalleriesAdminPage() {
   }
 
   const cover = gallery?.media.find((item) => item.id === form.coverMediaId) || gallery?.media[0]
+  const visibleUploads = uploads.filter((item) => item.galleryId === gallery?.id)
   const busy = uploads.filter((item) => ['queued', 'uploading', 'processing'].includes(item.status)).length
-  const batchBytes = uploads.reduce((sum, item) => sum + item.file.size, 0)
-  const batchProgress = batchBytes ? Math.round(uploads.reduce((sum, item) => sum + item.file.size * (item.status === 'ready' ? 100 : item.progress), 0) / batchBytes) : 0
+  const controlsBusy = preparing || busy > 0
+  const batchBytes = visibleUploads.reduce((sum, item) => sum + item.file.size, 0)
+  const batchProgress = batchBytes ? Math.round(visibleUploads.reduce((sum, item) => sum + item.file.size * (item.status === 'ready' ? 100 : item.progress), 0) / batchBytes) : 0
 
   return (
     <main className="gallery-admin-app">
@@ -255,14 +265,14 @@ export default function GalleriesAdminPage() {
             <div className="sidebar-label">{demoMode ? 'DESIGN PREVIEW · NO FILES UPLOADED' : 'YOUR WORKSPACE'}</div>
             <h1>Client galleries<span>.</span></h1>
             <p>Beautiful, private spaces for the photographs that matter.</p>
-            <button className="gallery-primary sidebar-create" disabled={busy > 0} onClick={() => { setGallery(null); setForm(initialForm); setUploads([]); setPreview(false); fileInput.current?.click() }}>
+            <button className="gallery-primary sidebar-create" disabled={controlsBusy} onClick={() => { setGallery(null); setForm(initialForm); setPreview(false); fileInput.current?.click() }}>
               <span>＋</span> New gallery
             </button>
             <div className="sidebar-divider" />
             <div className="sidebar-label gallery-list-label">COLLECTIONS <span>{galleries.length}</span></div>
             {galleries.length === 0 && <p className="sidebar-empty">Your galleries will appear here after you choose photos.</p>}
             {galleries.map((item) => (
-              <button key={item.id} disabled={busy > 0} className={`gallery-list-item ${gallery?.id === item.id ? 'active' : ''}`} onClick={() => openGallery(item.id).catch((openError) => setError(openError.message))}>
+              <button key={item.id} disabled={controlsBusy} className={`gallery-list-item ${gallery?.id === item.id ? 'active' : ''}`} onClick={() => openGallery(item.id).catch((openError) => setError(openError.message))}>
                 <span>{item.title}</span><small>{item.photoCount} photos · {item.status}</small>
               </button>
             ))}
@@ -279,7 +289,7 @@ export default function GalleriesAdminPage() {
                 <button className="gallery-primary" onClick={() => fileInput.current?.click()}>Choose photographs <span>↗</span></button>
                 <button className="gallery-folder-action" onClick={() => folderInput.current?.click()}>Choose a folder</button>
                 <span className="empty-support">Or drop photos here · JPEG, PNG, or WebP · Up to 10 MB each</span>
-                {uploads.length > 0 && <div className="empty-upload-progress" role="status">Preparing gallery · {uploads.length} photos selected</div>}
+                {preparing && <div className="empty-upload-progress" role="status">Preparing gallery…</div>}
               </div>
             ) : (
               <>
@@ -288,7 +298,7 @@ export default function GalleriesAdminPage() {
                   <div className="editor-header-actions">
                     <button className="gallery-secondary" onClick={() => setPreview((value) => !value)}>{preview ? 'Edit gallery' : 'Preview gallery'}</button>
                     {gallery.status === 'published' && <button className="gallery-secondary" onClick={copyLink}>Copy link ↗</button>}
-                    <button className="gallery-primary" disabled={saving || busy > 0} onClick={() => save(gallery.status === 'published' ? undefined : 'published')}>{saving ? 'Saving…' : gallery.status === 'published' ? 'Save changes' : 'Publish gallery →'}</button>
+                    <button className="gallery-primary" disabled={saving || controlsBusy} onClick={() => save(gallery.status === 'published' ? undefined : 'published')}>{saving ? 'Saving…' : gallery.status === 'published' ? 'Save changes' : 'Publish gallery →'}</button>
                   </div>
                 </div>
 
@@ -303,15 +313,15 @@ export default function GalleriesAdminPage() {
                 ) : (
                   <div className="gallery-editor-columns">
                     <div className={`gallery-editor-primary ${dragging ? 'is-dragging' : ''}`} onDragEnter={(event) => { event.preventDefault(); setDragging(true) }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setDragging(false) }} onDrop={dropFiles}>
-                      <div className="editor-section-title"><div><span>01 / CONTENT</span><h3>The photographs</h3></div><div className="editor-add-actions"><button className="gallery-secondary" disabled={busy > 0} onClick={() => folderInput.current?.click()}>＋ Add folder</button><button className="gallery-secondary" disabled={busy > 0} onClick={() => fileInput.current?.click()}>＋ Add photos</button></div></div>
-                      {uploads.length > 0 && <div className="editor-batch-progress" role="status"><div><strong>{busy ? 'Building your gallery' : uploads.some((item) => item.status === 'failed') ? 'Some photos need attention' : 'Upload batch complete'}</strong><span>{uploads.filter((item) => item.status === 'ready').length} of {uploads.length} ready · {formatBytes(batchBytes)} · {batchProgress}%</span></div><div className="editor-progress-track"><i style={{ width: `${batchProgress}%` }} /></div></div>}
+                      <div className="editor-section-title"><div><span>01 / CONTENT</span><h3>The photographs</h3></div><div className="editor-add-actions"><button className="gallery-secondary" disabled={controlsBusy} onClick={() => folderInput.current?.click()}>＋ Add folder</button><button className="gallery-secondary" disabled={controlsBusy} onClick={() => fileInput.current?.click()}>＋ Add photos</button></div></div>
+                      {visibleUploads.length > 0 && <div className="editor-batch-progress" role="status"><div><strong>{busy ? 'Building your gallery' : visibleUploads.some((item) => item.status === 'failed') ? 'Some photos need attention' : 'Upload batch complete'}</strong><span>{visibleUploads.filter((item) => item.status === 'ready').length} of {visibleUploads.length} ready · {formatBytes(batchBytes)} · {batchProgress}%</span></div><div className="editor-progress-track"><i style={{ width: `${batchProgress}%` }} /></div></div>}
                       <div className="editor-media-grid">
                         {gallery.media.map((item) => <button key={item.id} className={`editor-media-card ${form.coverMediaId === item.id ? 'is-cover' : ''}`} onClick={() => setForm((current) => ({ ...current, coverMediaId: item.id }))} title="Set as cover"><img src={item.thumbUrl} alt={item.filename} /><span>{form.coverMediaId === item.id ? 'COVER IMAGE' : 'SET AS COVER'}</span></button>)}
-                        {uploads.filter((item) => item.status !== 'ready').map((item) => <div key={item.key} className="editor-media-card upload-card"><img src={item.previewUrl} alt="" /><div><strong>{item.file.name}</strong><span>{item.status === 'failed' ? item.error : `${item.status} · ${item.progress}%`}</span>{item.status === 'failed' && gallery && <button onClick={() => retry(item)}>Retry upload</button>}</div><i style={{ width: `${item.progress}%` }} /></div>)}
+                        {visibleUploads.filter((item) => item.status !== 'ready').map((item) => <div key={item.key} className="editor-media-card upload-card"><img src={item.previewUrl} alt="" /><div><strong>{item.file.name}</strong><span>{item.status === 'failed' ? item.error : `${item.status} · ${item.progress}%`}</span>{item.status === 'failed' && gallery && <button onClick={() => retry(item)}>Retry upload</button>}</div><i style={{ width: `${item.progress}%` }} /></div>)}
                       </div>
                       {gallery.media.length > 0 && <div className="editor-organize"><div className="editor-section-title"><div><span>SEQUENCE & SETS</span><h3>Tell the story</h3></div></div><p>Arrange the viewing order and group photographs into named sections.</p>{gallery.media.map((item, index) => <div className="editor-organize-row" key={item.id}><img src={item.thumbUrl} alt="" /><span title={item.filename}>{item.filename}</span><input aria-label={`Set for ${item.filename}`} value={item.set} onChange={(event) => updateSet(item.id, event.target.value)} maxLength={60} placeholder="Set name" /><button onClick={() => movePhoto(index, -1)} disabled={index === 0} aria-label={`Move ${item.filename} earlier`}>↑</button><button onClick={() => movePhoto(index, 1)} disabled={index === gallery.media.length - 1} aria-label={`Move ${item.filename} later`}>↓</button></div>)}</div>}
                       {!demoMode && <div className="editor-selections"><div className="editor-section-title"><div><span>03 / CLIENT ACTIVITY</span><h3>Selections</h3></div><button className="gallery-secondary" onClick={() => api(`/api/admin/galleries/${gallery.id}/selections`).then(setSelections).catch((loadError) => setError(loadError.message))}>Refresh</button></div>{selections.length ? selections.map((selection) => <div className="editor-selection-row" key={selection.id}><div><strong>{selection.name}</strong><span>{selection.submittedAt ? `Sent ${new Date(selection.submittedAt).toLocaleString()}` : 'Draft'} · {selection.photos.length} photos</span></div><details><summary>View filenames</summary><p>{selection.photos.map((photo) => photo.filename).join(' · ') || 'No photos selected yet.'}</p></details></div>) : <p>No client selections yet. Submitted lists will appear here.</p>}</div>}
-                      {!gallery.media.length && !uploads.length && <button className="editor-empty-upload" onClick={() => fileInput.current?.click()}>Choose photographs to fill this gallery ↗</button>}
+                      {!gallery.media.length && !visibleUploads.length && <button className="editor-empty-upload" onClick={() => fileInput.current?.click()}>Choose photographs to fill this gallery ↗</button>}
                       {busy > 0 && <p className="editor-upload-note">{busy} photo{busy > 1 ? 's' : ''} still uploading or processing. Keep this tab open until they finish.</p>}
                       {dragging && <div className="editor-drop-hint">Drop photos to add them</div>}
                     </div>
@@ -326,8 +336,8 @@ export default function GalleriesAdminPage() {
                       {gallery.hasPassword && <label className="settings-check"><input type="checkbox" checked={form.removePassword} onChange={(event) => setForm({ ...form, removePassword: event.target.checked, password: '' })} /> Remove gallery password</label>}
                       <label className="settings-check"><input type="checkbox" checked={form.downloadsEnabled} onChange={(event) => setForm({ ...form, downloadsEnabled: event.target.checked })} /> Allow individual downloads</label>
                       <label className="settings-check"><input type="checkbox" checked={form.favoritesEnabled} onChange={(event) => setForm({ ...form, favoritesEnabled: event.target.checked })} /> Show favorites control</label>
-                      <button className="gallery-secondary settings-save" disabled={saving || busy > 0} onClick={() => save()}>{saving ? 'Saving…' : 'Save settings'}</button>
-                      {gallery.status === 'published' && <button className="settings-unpublish" disabled={busy > 0} onClick={() => save('draft')}>Unpublish gallery</button>}
+                      <button className="gallery-secondary settings-save" disabled={saving || controlsBusy} onClick={() => save()}>{saving ? 'Saving…' : 'Save settings'}</button>
+                      {gallery.status === 'published' && <button className="settings-unpublish" disabled={controlsBusy} onClick={() => save('draft')}>Unpublish gallery</button>}
                     </aside>
                   </div>
                 )}
