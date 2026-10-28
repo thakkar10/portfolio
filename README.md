@@ -81,7 +81,21 @@ npm run dev
 
 ## Creating Your Admin Account
 
-Existing admin accounts continue to work. For a fresh installation, create the first admin in MongoDB with a bcrypt-hashed password and set `JWT_SECRET` to a unique secret. Public registration is disabled because registered accounts can access the admin dashboard.
+Existing admin accounts continue to work. For a fresh installation, set `JWT_SECRET` to a unique secret, then create the first admin from the repository root:
+
+```bash
+DOTENV_CONFIG_PATH=.env.local node --input-type=module <<'NODE'
+import 'dotenv/config'
+import mongoose from 'mongoose'
+import User from './src/models/User.js'
+
+await mongoose.connect(process.env.MONGODB_URI)
+await User.create({ username: 'admin', password: 'replace-with-a-strong-password' })
+await mongoose.disconnect()
+NODE
+```
+
+The `User` model hashes the password when it saves this record. A direct MongoDB insert bypasses that hook and requires a precomputed bcrypt hash. Public registration is disabled because registered accounts can access the admin dashboard.
 
 Sign in with the first admin account to get a token:
 ```bash
