@@ -771,6 +771,7 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-light">Admin Dashboard</h1>
+          <a href="/admin/galleries" className="px-6 py-2 border border-black hover:bg-black hover:text-white transition-colors">Client Galleries ↗</a>
           <button
             onClick={handleLogout}
             className="px-6 py-2 border border-black hover:bg-black hover:text-white transition-colors"

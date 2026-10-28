@@ -70,6 +70,8 @@ CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
 ```
 
+For client-gallery rate limits outside a Vercel deployment that exposes `VERCEL=1`, set `GALLERY_TRUSTED_CLIENT_IP_HEADER` to the client-IP header written by your trusted ingress. The ingress must strip or overwrite any value supplied by the visitor. On Vercel without exposed system variables, use `GALLERY_TRUSTED_CLIENT_IP_HEADER=x-vercel-forwarded-for`. Without this setting, visitors share one rate-limit bucket.
+
 4. Start the development server:
 ```bash
 npm run dev
@@ -79,15 +81,39 @@ npm run dev
 
 ## Creating Your Admin Account
 
-1. Visit `/api/auth/register` endpoint or create a user manually in MongoDB
-2. Or use the registration API:
+Existing admin accounts continue to work. For a fresh installation, set `JWT_SECRET` to a unique secret, then create the first admin from the repository root:
+
 ```bash
-curl -X POST http://localhost:3000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"yourpassword"}'
+DOTENV_CONFIG_PATH=.env.local node --input-type=module <<'NODE'
+import 'dotenv/config'
+import mongoose from 'mongoose'
+import User from './src/models/User.js'
+
+await mongoose.connect(process.env.MONGODB_URI)
+await User.create({ username: 'admin', password: 'replace-with-a-strong-password' })
+await mongoose.disconnect()
+NODE
 ```
 
-3. Login at `/admin/login`
+The `User` model hashes the password when it saves this record. A direct MongoDB insert bypasses that hook and requires a precomputed bcrypt hash. Public registration is disabled because registered accounts can access the admin dashboard.
+
+Sign in with the first admin account to get a token:
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"your-existing-password"}'
+```
+
+Copy the `token` value from the response into your shell, then create another account:
+```bash
+export ADMIN_TOKEN='paste-token-from-login-response'
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -d '{"username":"second-admin","password":"yourpassword"}'
+```
+
+Login at `/admin/login`.
 
 ## Project Structure
 
