@@ -81,8 +81,16 @@ npm run dev
 
 Existing admin accounts continue to work. For a fresh installation, create the first admin in MongoDB with a bcrypt-hashed password and set `JWT_SECRET` to a unique secret. Public registration is disabled because registered accounts can access the admin dashboard.
 
-After signing in as an admin, you can create another account with the registration API:
+Sign in with the first admin account to get a token:
 ```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"your-existing-password"}'
+```
+
+Copy the `token` value from the response into your shell, then create another account:
+```bash
+export ADMIN_TOKEN='paste-token-from-login-response'
 curl -X POST http://localhost:3000/api/auth/register \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \

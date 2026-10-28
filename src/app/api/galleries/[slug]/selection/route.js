@@ -34,7 +34,7 @@ function validIds(ids, gallery) {
 }
 
 function selectionToken(request) {
-  const token = request.headers.get('x-selection-token') || new URL(request.url).searchParams.get('token') || ''
+  const token = request.headers.get('x-selection-token') || ''
   return /^[a-f0-9]{64}$/.test(token) ? token : null
 }
 
